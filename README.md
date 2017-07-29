@@ -9,46 +9,19 @@ This is going to use the standard libraries from python, ie NOT use numpy, gsgli
 # DONE
 * nothing
 
-## Public Header Block
-```
-FileSignature (“LASF”) char[4] 4 bytes                          4s
-FileSourceID unsigned short 2 bytes                             H
-GlobalEncoding unsigned short 2 bytes                           H
-ProjectIDGUIDdata1 unsigned long 4 bytes                        L
-ProjectIDGUIDdata2 unsigned short 2 byte                        H
-ProjectIDGUIDdata3 unsigned short 2 byte                        H
-ProjectIDGUIDdata4 unsigned char[8] 8 bytes                     8B
-VersionMajor unsigned char 1 byte *                             B
-VersionMinor unsigned char 1 byte *                             B
-SystemIdentifier char[32] 32 bytes *                            32c
-GeneratingSoftware char[32] 32 bytes *                          32c
-FileCreationDayofYear unsigned short 2 bytes *                  32c
-FileCreationYear unsigned short 2 bytes *                       H
-HeaderSize unsigned short 2 bytes *                             H
-Offsettopointdata unsigned long 4 bytes *                       L
-NumberofVariableLengthRecords unsigned long 4 bytes *           L
-PointDataRecordFormat unsigned char 1 byte *                    B
-PointDataRecordLength unsigned short 2 bytes *                  H
-LegacyNumberofpointrecords unsigned long 4 bytes *              L
-LegacyNumberofpoints by return unsigned long [5] 20 bytes *     5L
-Xscalefactor double 8 bytes *                                   d 
-Yscalefactor double 8 bytes *                                   d 
-Zscalefactor double 8 bytes *                                   d  
-Xoffset double 8 bytes *                                        d
-Yoffset double 8 bytes *                                        d
-Zoffset double 8 bytes *                                        d
-MaxX double 8 bytes *                                           d
-MinX double 8 bytes *                                           d
-MaxY double 8 bytes *                                           d
-MinY double 8 bytes *                                           d
-MaxZ double 8 bytes *                                           d
-MinZ double 8 bytes *                                           d
-StartofWaveformDataPacketRecord Unsigned long long 8 bytes *    Q
-StartoffirstExtendedVariableLengthRecord unsigned long long 8 bytes *   Q
-NumberofExtendedVariableLengthRecords unsigned long 4 bytes *           L
-Numberofpointrecords unsigned long long 8 bytes *                       Q
-Numberofpointsbyreturn unsigned long long [15] 120 bytes                15Q
-```
+# Record Decriptions (See page 82)
+HEADER 									1
+SWATH_BATHYMETRY_PING 					2
+SOUND_VELOCITY_PROFILE 					3
+PROCESSING_PARAMETERS 					4
+SENSOR_PARAMETERS 						5
+COMMENT 								6
+HISTORY 								7
+NAVIGATION_ERROR (obsolete) 			8
+SWATH_BATHY_SUMMARY 					9
+SINGLE_BEAM_SOUNDING (use discouraged)	10
+HV_NAVIGATION_ERROR 					11
+ATTITUDE 								12
   
 ## Python Struct format characters
 ```

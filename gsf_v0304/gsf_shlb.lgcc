@@ -1,0 +1,45 @@
+#
+# HP-UX Configuration builder.lgccefile for: LibGsf.SL
+#       Modified by: S. Tatem - 7/31/96
+#
+#
+# Note that OPT_FLAGS is defined external to this file
+
+# Defitions
+TGT = libgsf.so
+STATICTGT = libgsf.a
+MAKEFILE = gsf_shlb.lgcc
+CC = gcc
+AR = ar
+MACROS = -DLINUX -DUNIX -DDISPLAY_SPINNER
+CFLAGS = -Wall -D_STRICT_ANSI -fPIC $(OPT_FLAGS) $(MACROS) $(INCS)
+LINKER = gcc
+LIBS = -lstdc++ -lm
+LFLAGS = -shared -Wl,-soname,$(TGT) -o $(TGT) $(LINK_FLAGS)
+
+# Object List
+OBJS =  gsf.o gsf_enc.o gsf_dec.o gsf_indx.o gsf_info.o
+
+# Compile Rule
+.c.o :
+        $(CC) -c $(CFLAGS) $*.c
+
+# Target and dependancies
+all: $(TGT)
+{-c $(CC) $(CFLAGS) $(LINKER) $(LFLAGS)} $(TGT) : $(OBJS) $(MAKEFILE)
+        $(LINKER) $(LFLAGS) $(LIBS) $(OBJS)
+        $(AR) -r $(STATICTGT) $(OBJS)
+
+clean:
+        rm -f *.o
+
+#UPDATE
+gsf.o:          gsf.h gsf_enc.h gsf_dec.h
+gsf_dec.o:      gsf.h
+gsf_enc.o:      gsf.h
+gsf_indx.o:     gsf.h
+gsf_info.o:     gsf.h
+#ENDUPDATE#
+#UPDATE#
+gsf.o:  gsf.h gsf_ft.h gsf_enc.h gsf_dec.h gsf_indx.h
+#ENDUPDATE#
