@@ -4,12 +4,12 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
-* implement the extract, so we can strip out the attitide records.  This will speed up development
 * processing record
 * attitude record
 * sound velocity record
 
 # DONE
+* implement exclude, so we can strip out the attitide records.  This will speed up development
 * can read the GSF header record with the version string
 * basic loop in place
 
@@ -48,3 +48,24 @@ d	    double	            float               	8
 s	    char[]	            string	 	 
 p	    char[]	            string	 	 
 P	    void *	            integer	 	
+
+
+Processing C:\development\python\sample.gsf
+Summary report:
+GSF_RECORD_HEADER: GSF Version = GSF-v03.07
+
+Total of 3969723 records:
+GSF_RECORD_HEADER: 1
+GSF_RECORD_SWATH_BATHYMETRY_PING: 2721
+GSF_RECORD_SOUND_VELOCITY_PROFILE: 1
+GSF_RECORD_PROCESSING_PARAMETERS: 1
+GSF_RECORD_SENSOR_PARAMETERS: 0
+GSF_RECORD_COMMENT: 0
+GSF_RECORD_HISTORY: 0
+GSF_RECORD_NAVIGATION_ERROR: 0
+GSF_RECORD_SWATH_BATHY_SUMMARY: 0
+GSF_RECORD_SINGLE_BEAM_PING: 0
+GSF_RECORD_HV_NAVIGATION_ERROR: 0
+GSF_RECORD_ATTITUDE: 3966999 (3966999 measurements)
+
+Finished - 1 files processed.

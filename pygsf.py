@@ -29,43 +29,56 @@ def main():
 
 ###############################################################################
 
-class PROCESSING_PARAMETERS :
-    def __init__(self, fileptr, bytes):
-        self.recordidentifier = '1'       # assign the GSF code for this datagram type
-        self.offset = fileptr.tell()    # remember where this packet resides in the file so we can return if needed
-        self.bytes = bytes              # remember how many bytes this packet contains
-        self.fileptr = fileptr          # remember the file pointer so we do not need to pass from the host process
-        self.fileptr.seek(bytes, 1)     # move the file pointer to the end of the record so we can skip as the default actions
+###############################################################################
+class UNKNOWN_RECORD:
+	'''used as a convenience tool for datagrams we have no bespoke classes.  Better to make a bespoke class'''
+	def __init__(self, fileptr, numberofbytes, recordidentifier):
+		self.typeOfDatagram = recordidentifier
+		self.offset = fileptr.tell()
+		self.numberofbytes = numberofbytes
+		self.fileptr = fileptr
+		self.fileptr.seek(numberofbytes, 1)
+		self.data = ""
+	def read(self):
+		self.data = self.fileptr.read(self.numberofbytes)
 
-    def read(self):        
-        self.fileptr.seek(self.offset, 0)   # move the file pointer to the start of the record so we can read from disc              
-        rec_fmt = '=12s'
-        rec_len = struct.calcsize(rec_fmt)
-        rec_unpack = struct.Struct(rec_fmt).unpack
-        data = self.fileptr.read(rec_len)   # read the record from disc
-        bytesRead = rec_len
-        s = rec_unpack(data)
-        
-        self.version   = s[0].decode('utf-8').rstrip('\x00')
+class PROCESSING_PARAMETERS :
+	def __init__(self, fileptr, bytes, recordidentifier):
+		self.recordidentifier = recordidentifier       # assign the GSF code for this datagram type
+		self.offset = fileptr.tell()    # remember where this packet resides in the file so we can return if needed
+		self.bytes = bytes              # remember how many bytes this packet contains
+		self.fileptr = fileptr          # remember the file pointer so we do not need to pass from the host process
+		self.fileptr.seek(bytes, 1)     # move the file pointer to the end of the record so we can skip as the default actions
+
+	def read(self):        
+		self.fileptr.seek(self.offset, 0)   # move the file pointer to the start of the record so we can read from disc              
+		rec_fmt = '=12s'
+		rec_len = struct.calcsize(rec_fmt)
+		rec_unpack = struct.Struct(rec_fmt).unpack
+		data = self.fileptr.read(rec_len)   # read the record from disc
+		bytesRead = rec_len
+		s = rec_unpack(data)
+		
+		self.version   = s[0].decode('utf-8').rstrip('\x00')
 
 class GSFHEADER:
-    def __init__(self, fileptr, bytes):
-        self.recordidentifier = '1'       # assign the GSF code for this datagram type
-        self.offset = fileptr.tell()    # remember where this packet resides in the file so we can return if needed
-        self.bytes = bytes              # remember how many bytes this packet contains
-        self.fileptr = fileptr          # remember the file pointer so we do not need to pass from the host process
-        self.fileptr.seek(bytes, 1)     # move the file pointer to the end of the record so we can skip as the default actions
+	def __init__(self, fileptr, bytes, recordidentifier):
+		self.recordidentifier = recordidentifier       # assign the GSF code for this datagram type
+		self.offset = fileptr.tell()    # remember where this packet resides in the file so we can return if needed
+		self.bytes = bytes              # remember how many bytes this packet contains
+		self.fileptr = fileptr          # remember the file pointer so we do not need to pass from the host process
+		self.fileptr.seek(bytes, 1)     # move the file pointer to the end of the record so we can skip as the default actions
 
-    def read(self):        
-        self.fileptr.seek(self.offset, 0)   # move the file pointer to the start of the record so we can read from disc              
-        rec_fmt = '=12s'
-        rec_len = struct.calcsize(rec_fmt)
-        rec_unpack = struct.Struct(rec_fmt).unpack
-        data = self.fileptr.read(rec_len)   # read the record from disc
-        bytesRead = rec_len
-        s = rec_unpack(data)
-        
-        self.version   = s[0].decode('utf-8').rstrip('\x00')
+	def read(self):        
+		rec_fmt = '=12s'
+		rec_len = struct.calcsize(rec_fmt)
+		self.fileptr.seek(self.offset + (self.bytes - rec_len), 0)   # move the file pointer to the start of the record so we can read from disc              
+		rec_unpack = struct.Struct(rec_fmt).unpack
+		data = self.fileptr.read(rec_len)   # read the record from disc
+		bytesRead = rec_len
+		s = rec_unpack(data)
+		
+		self.version   = s[0].decode('utf-8').rstrip('\x00')
 
 class GSFREADER:
 	def __init__(self, filename):
@@ -103,21 +116,29 @@ class GSFREADER:
 		'''
 		return pprint.pformat(vars(self))
 
+	def readDatagramBytes(self, offset, byteCount):
+		'''read the entire raw bytes for the datagram without changing the file pointer.  this is used for file conditioning'''
+		curr = self.fileptr.tell()
+		self.fileptr.seek(offset, 0)   # move the file pointer to the start of the record so we can read from disc              
+		data = self.fileptr.read(byteCount)
+		self.fileptr.seek(curr, 0)
+		return data
+
 	def readDatagram(self):
 		# read the datagram header.  This permits us to skip datagrams we do not support
-		NumberOfBytes, recordidentifier, haschecksumNumberOfBytes = self.readDatagramHeader()
-		# print ("%d %d %d " % (NumberOfBytes, recordidentifier, self.fileptr.tell()))
+		numberofbytes, recordidentifier, haschecksumnumberofbytes = self.readDatagramHeader()
+		# print ("%d %d %d " % (numberofbytes, recordidentifier, self.fileptr.tell()))
 		if recordidentifier == 1: # Header, the GSF Version
 			# create a class for this datagram, but only decode if the resulting class is called by the user.  This makes it much faster
-			dg = GSFHEADER(self.fileptr, NumberOfBytes)
+			dg = GSFHEADER(self.fileptr, numberofbytes, recordidentifier)
 			dg.read()
-			return dg.recordidentifier, dg
+			return numberofbytes, dg.recordidentifier, dg
 
 		# elif recordidentifier == 2: #SWATH_BATHYMETRY_PING
 		# 	return dg.recordidentifier, dg 
 
 		# elif recordidentifier == 3: # SOUND_VELOCITY_PROFILE
-			# dg = SOUND_VELOCITY_PROFILE(self.fileptr, NumberOfBytes)
+			# dg = SOUND_VELOCITY_PROFILE(self.fileptr, numberofbytes)
 			# return dg.recordidentifier, dg 
 
 		# elif recordidentifier == 4: # PROCESSING_PARAMETERS
@@ -125,20 +146,23 @@ class GSFREADER:
 
 		# 	return dg.recordidentifier, dg 
 		# elif recordidentifier == 88: # X Depth
-		# 	dg = X_DEPTH(self.fileptr, NumberOfBytes)
+		# 	dg = X_DEPTH(self.fileptr, numberofbytes)
 		# 	return dg.recordidentifier, dg 
 		# elif recordidentifier == 68: # D DEPTH
-		# 	dg = D_DEPTH(self.fileptr, NumberOfBytes)
+		# 	dg = D_DEPTH(self.fileptr, numberofbytes)
 		# 	return dg.recordidentifier, dg
 		else:
-			self.fileptr.seek(NumberOfBytes, 1)
-			return recordidentifier,0
+			dg = UNKNOWN_RECORD(self.fileptr, numberofbytes, recordidentifier)
+			return numberofbytes, recordidentifier, dg
+
+			# self.fileptr.seek(numberofbytes, 1)
+			# return numberofbytes, recordidentifier, 0
 
 	def readDatagramHeader(self):
 		'''
 		read the las file header from disc
 		'''
-		# curr = self.fileptr.tell()
+		curr = self.fileptr.tell()
 
 		# version header format
 		data = self.fileptr.read(self.hdrlen)
@@ -156,26 +180,47 @@ class GSFREADER:
 		if haschecksum:
 			# read the checksum of 4 bytes if required
 			chksum = self.fileptr.read(4)
+			return (sizeofdata + self.hdrlen + 4, recordidentifier, haschecksum)
 		
 		# now reset file pointer
-		# self.fileptr.seek(curr, 0)
+		self.fileptr.seek(curr, 0)
 		
-		return (sizeofdata, recordidentifier, haschecksum)
+		if haschecksum:
+			return (sizeofdata + self.hdrlen + 4, recordidentifier, haschecksum)
+		else:
+			return (sizeofdata + self.hdrlen, recordidentifier, haschecksum)
 
 def testreader():
 	'''
 	sample read script so we can see how to use the code
 	'''
 	start_time = time.time() # time the process so we can keep it quick
+	writeConditionedFile = True
+	exclude = [12]
+	filename = "C:/development/python/sample_subset.gsf"
 
-	filename = "C:/development/python/sample.gsf"
+	if writeConditionedFile:
+		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), "subset.gsf")
+		outFileName = createOutputFileName(outFileName)
+		outFilePtr = open(outFileName, 'wb')
+		print ("output file: %s" % outFileName)
+
 	# create a GSFREADER class and pass the filename
 	r = GSFREADER(filename)
 
 	while r.moreData():
 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
 		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
-		recordidentifier, datagram = r.readDatagram()
+		numberofbytes, recordidentifier, datagram = r.readDatagram()
+
+		# read the bytes into a buffer 
+		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
+
+		if recordidentifier in exclude:
+			continue
+
+		if writeConditionedFile:
+			outFilePtr.write(rawBytes)
 
 	print("Duration %.3fs" % (time.time() - start_time )) # time the process
 
@@ -185,6 +230,30 @@ def isBitSet(int_type, offset):
 	'''testBit() returns a nonzero result, 2**offset, if the bit at 'offset' is one.'''
 	mask = 1 << offset
 	return (int_type & (1 << offset)) != 0
+
+###############################################################################
+def createOutputFileName(path):
+	'''Create a valid output filename. if the name of the file already exists the file name is auto-incremented.'''
+	path      = os.path.expanduser(path)
+
+	if not os.path.exists(os.path.dirname(path)):
+		os.makedirs(os.path.dirname(path))
+
+	if not os.path.exists(path):
+		return path
+
+	root, ext = os.path.splitext(os.path.expanduser(path))
+	dir       = os.path.dirname(root)
+	fname     = os.path.basename(root)
+	candidate = fname+ext
+	index     = 1
+	ls        = set(os.listdir(dir))
+	while candidate in ls:
+			candidate = "{}_{}{}".format(fname,index,ext)
+			index    += 1
+
+	return os.path.join(dir, candidate)
+
 
 ###############################################################################
 if __name__ == "__main__":
