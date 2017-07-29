@@ -74,7 +74,8 @@ class GSFREADER:
 		self.fileName = filename
 		self.fileptr = open(filename, 'rb')		
 		self.fileSize = os.path.getsize(filename)
-		# self.hdr = gsfhdr()
+		self.hdrfmt = ">LL"
+		self.hdrlen = struct.calcsize(self.hdrfmt)
 
 	def moreData(self):
 		bytesRemaining = self.fileSize - self.fileptr.tell()
@@ -105,22 +106,22 @@ class GSFREADER:
 	def readDatagram(self):
 		# read the datagram header.  This permits us to skip datagrams we do not support
 		NumberOfBytes, recordidentifier, haschecksumNumberOfBytes = self.readDatagramHeader()
-		print ("%d %d %d " % (NumberOfBytes, recordidentifier, self.fileptr.tell()))
+		# print ("%d %d %d " % (NumberOfBytes, recordidentifier, self.fileptr.tell()))
 		if recordidentifier == 1: # Header, the GSF Version
 			# create a class for this datagram, but only decode if the resulting class is called by the user.  This makes it much faster
 			dg = GSFHEADER(self.fileptr, NumberOfBytes)
 			dg.read()
 			return dg.recordidentifier, dg
 
-		elif recordidentifier == 2: #SWATH_BATHYMETRY_PING
-			return dg.recordidentifier, dg 
+		# elif recordidentifier == 2: #SWATH_BATHYMETRY_PING
+		# 	return dg.recordidentifier, dg 
 
-		elif recordidentifier == 3: # SOUND_VELOCITY_PROFILE
-			dg = SOUND_VELOCITY_PROFILE(self.fileptr, NumberOfBytes)
-			return dg.recordidentifier, dg 
+		# elif recordidentifier == 3: # SOUND_VELOCITY_PROFILE
+			# dg = SOUND_VELOCITY_PROFILE(self.fileptr, NumberOfBytes)
+			# return dg.recordidentifier, dg 
 
-		elif recordidentifier == 4: # PROCESSING_PARAMETERS
-			return dg.recordidentifier, dg 
+		# elif recordidentifier == 4: # PROCESSING_PARAMETERS
+		# 	return dg.recordidentifier, dg 
 
 		# 	return dg.recordidentifier, dg 
 		# elif recordidentifier == 88: # X Depth
@@ -137,13 +138,11 @@ class GSFREADER:
 		'''
 		read the las file header from disc
 		'''
-		curr = self.fileptr.tell()
+		# curr = self.fileptr.tell()
 
 		# version header format
-		hdrfmt = ">LL"
-		hdrlen = struct.calcsize(hdrfmt)
-		data = self.fileptr.read(hdrlen)
-		s = struct.unpack(hdrfmt, data)
+		data = self.fileptr.read(self.hdrlen)
+		s = struct.unpack(self.hdrfmt, data)
 
 		sizeofdata =					s[0]
 		recordidentifier =				s[1]
@@ -153,6 +152,10 @@ class GSFREADER:
 		reserved = (temp >> 22)
 
 		recordidentifier = (recordidentifier & 0x003FFFFF)
+
+		if haschecksum:
+			# read the checksum of 4 bytes if required
+			chksum = self.fileptr.read(4)
 		
 		# now reset file pointer
 		# self.fileptr.seek(curr, 0)
