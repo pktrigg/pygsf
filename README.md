@@ -4,10 +4,14 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
-* everything
+* implement the extract, so we can strip out the attitide records.  This will speed up development
+* processing record
+* attitude record
+* sound velocity record
 
 # DONE
-* nothing
+* can read the GSF header record with the version string
+* basic loop in place
 
 # Record Decriptions (See page 82)
 HEADER 									1
