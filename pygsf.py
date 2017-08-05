@@ -348,6 +348,29 @@ class GSFREADER:
 		self.fileptr.seek(curr, 0)
 		return data
 
+	def loadscalefactors(self):
+		'''
+		rewind, load the scale factors array and rewind to the original position.  We can then use these scalefactors for every ping
+		'''
+		curr = self.fileptr.tell()
+		self.rewind()
+
+		while self.moreData():
+			numberofbytes, recordidentifier, datagram = self.readDatagram()
+			# print(recordidentifier, end='')
+			print (self.fileptr.tell())
+
+			# read the bytes into a buffer 
+			rawBytes = self.readDatagramBytes(datagram.offset, numberofbytes)
+			if recordidentifier == 2: #SWATH_BATHYMETRY_PING
+				datagram.read()
+				print ("ping at offset:", datagram.time)
+				# print ("%.3f, %.3f" % (datagram.longitude, datagram.latitude))
+				self.fileptr.seek(curr, 0)
+				return datagram.scalefactors
+		self.fileptr.seek(curr, 0)
+		return None
+		
 	def readDatagram(self):
 		# read the datagram header.  This permits us to skip datagrams we do not support
 		numberofbytes, recordidentifier, haschecksumnumberofbytes, hdrlen = self.readDatagramHeader()
@@ -427,6 +450,7 @@ def testreader():
 
 	# create a GSFREADER class and pass the filename
 	r = GSFREADER(filename)
+	scalefactors = r.loadscalefactors()
 
 	while r.moreData():
 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
@@ -437,13 +461,8 @@ def testreader():
 
 		# read the bytes into a buffer 
 		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
-
-# 20
-# 2252
-# 4056
-# 24832
-# 45268
 		if recordidentifier == 2: #SWATH_BATHYMETRY_PING
+			datagram.scalefactors = scalefactors	
 			datagram.read()
 			print ("ping at offset:", datagram.time)
 			# print ("%.3f, %.3f" % (datagram.longitude, datagram.latitude))
