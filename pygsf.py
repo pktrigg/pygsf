@@ -357,15 +357,8 @@ class GSFREADER:
 
 		while self.moreData():
 			numberofbytes, recordidentifier, datagram = self.readDatagram()
-			# print(recordidentifier, end='')
-			print (self.fileptr.tell())
-
-			# read the bytes into a buffer 
-			rawBytes = self.readDatagramBytes(datagram.offset, numberofbytes)
 			if recordidentifier == 2: #SWATH_BATHYMETRY_PING
 				datagram.read()
-				print ("ping at offset:", datagram.time)
-				# print ("%.3f, %.3f" % (datagram.longitude, datagram.latitude))
 				self.fileptr.seek(curr, 0)
 				return datagram.scalefactors
 		self.fileptr.seek(curr, 0)
