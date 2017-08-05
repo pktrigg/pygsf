@@ -61,8 +61,6 @@ def main():
 def createWaterfall(filename, colorScale, beamCount, zoom=1.0, clip=0, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
 	print ("Processing file: ", filename)
 
-	r = pyall.ALLReader(filename)
-	totalrecords = r.getRecordCount()
 	start_time = time.time() # time the process
 	recCount = 0
 	waterfall = []
@@ -71,28 +69,32 @@ def createWaterfall(filename, colorScale, beamCount, zoom=1.0, clip=0, invert=Tr
 	outputResolution = beamCount * zoom
 	isoStretchFactor = (yResolution/xResolution) * zoom
 	print ("xRes %.2f yRes %.2f isoStretchFactor %.2f" % (xResolution, yResolution, isoStretchFactor))
-	while r.moreData():
-		TypeOfDatagram, datagram = r.readDatagram()
-		if (TypeOfDatagram == 0):
-			continue
-		if (TypeOfDatagram == 'X') or (TypeOfDatagram == 'D'):
-			datagram.read()
-			
-			if datagram.NBeams == 0:
-				continue
 
+	r = pygsf.GSFREADER(filename)
+	scalefactors = r.loadscalefactors()
+	totalrecords = r.getrecordcount()
+
+	while r.moreData():
+		numberofbytes, recordidentifier, datagram = r.readDatagram()
+		if recordidentifier == 2: #SWATH_BATHYMETRY_PING
+			datagram.scalefactors = scalefactors	
+			datagram.read()
+
+			# if datagram.frequency != 200000:
+			# 	print ("skipping freq: %d" % datagram.frequency)
+			# 	continue
 			# we need to remember the actual data extents so we can set the color palette mappings to the same limits. 
-			minBS = min(minBS, min(datagram.Reflectivity))
-			maxBS = max(maxBS, max(datagram.Reflectivity))
+			minBS = min(minBS, min(datagram.MEAN_REL_AMPLITUDE_ARRAY))
+			maxBS = max(maxBS, max(datagram.MEAN_REL_AMPLITUDE_ARRAY))
 
 			# print ("MinBS %.3f MaxBS %.3f" % (minBS, maxBS))
 			# waterfall.insert(0, np.abs( np.asarray(datagram.Reflectivity)))			
 
 			# we need to stretch the data to make it isometric, so lets use numpy interp routing to do that for Us
 			# datagram.AcrossTrackDistance = datagram.AcrossTrackDistance.reverse()
-			xp = np.array(datagram.AcrossTrackDistance) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
+			xp = np.array(datagram.ACROSS_TRACK_ARRAY) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
 			# datagram.Reflectivity.reverse()
-			fp = np.abs(np.array(datagram.Reflectivity)) #the Backscatter list as a numpy array
+			fp = np.abs(np.array(datagram.MEAN_REL_AMPLITUDE_ARRAY)) #the Backscatter list as a numpy array
 			# fp = geodetic.medfilt(fp,31)
 			x = np.linspace(leftExtent, rightExtent, outputResolution) #the required samples needs to be about the same as the original number of samples, spread across the across track range
 			newBackscatters = np.interp(x, xp, fp, left=0.0, right=0.0)
@@ -101,11 +103,11 @@ def createWaterfall(filename, colorScale, beamCount, zoom=1.0, clip=0, invert=Tr
 			# newBackscatters = geodetic.medfilt(newBackscatters,3)
 			waterfall.append(np.asarray(newBackscatters))			
 
-		recCount += 1
-		if r.currentRecordDateTime().timestamp() % 30 == 0:
-			percentageRead = (recCount / totalrecords) 
-			update_progress("Decoding .all file", percentageRead)
-	update_progress("Decoding .all file", 1)
+			recCount += 1
+			if datagram.currentRecordDateTime().timestamp() % 30 == 0:
+				percentageRead = (recCount / totalrecords) 
+				update_progress("Decoding .gsf file", percentageRead)
+	update_progress("Decoding .gsf file", 1)
 	r.close()	
 
 	# we have all data loaded, so now lets make a waterfall image...

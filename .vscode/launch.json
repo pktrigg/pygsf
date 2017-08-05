@@ -16,7 +16,7 @@
                 "WaitOnNormalExit",
                 "RedirectOutput"
 			],
-					"args": ["-color", "gray", "-i", "C:/development/python/sample_subset.gsf"\
+					"args": ["-color", "graylog", "-i", "C:/development/python/sample_subset.gsf"\
 
         },
     ]
