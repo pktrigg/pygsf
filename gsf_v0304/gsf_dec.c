@@ -6543,6 +6543,10 @@ DecodeR2SonicImagerySpecific(gsfSensorImagery * sdata, unsigned char *sptr)
     sdata->gsfR2SonicImagerySpecific.tx_misc_info = ntohl(ltemp);
     p += 4;
 
+
+
+
+
     /* The next four bytes contains the receiver bandwidth * 10,000 */
     memcpy(&ltemp, p, 4);
     sdata->gsfR2SonicImagerySpecific.rx_bandwidth = ((double) ntohl(ltemp)) / 1.0e4;

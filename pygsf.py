@@ -133,19 +133,7 @@ class SWATH_BATHYMETRY_PING :
 
 			subrecord_id = (s[0] & 0xFF000000) >> 24
 			subrecord_size = s[0] & 0x00FFFFFF
-
-			# if bytes_per_value == 1:
-			# 	field_size = GSF_FIELD_SIZE_ONE
-			# elif bytes_per_value == 2:
-			# 	field_size = GSF_FIELD_SIZE_TWO
-			# elif bytes_per_value == 4:
-			# 	field_size = GSF_FIELD_SIZE_FOUR
-			# else:
-			# 	# field_size = (ft->rec.mb_ping.scaleFactors.scaleTable[subrecord_id - 1].compressionFlag & 0xF0);
-			# 	# field_size = self.scalefactors[subrecord_id-1].compressionFlag & 0xF0
-			# 	field_size = GSF_FIELD_SIZE_ONE #temp until we understand how to work with the field size for the scale factors sub record which does not need this parameter
-
-			print ("Subrec: %d %d" % (subrecord_id, subrecord_size))
+			# print ("Subrec: %d %d" % (subrecord_id, subrecord_size))
 			# now decode the subrecord
 			
 			scale, offset, compressionFlag, datatype = self.getscalefactor(subrecord_id, subrecord_size / int(self.numbeams))
@@ -154,30 +142,30 @@ class SWATH_BATHYMETRY_PING :
 				self.readscalefactors()
 			elif subrecord_id == 1: 
 				self.readarray(self.DEPTH_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 2: 
-			# 	self.readarray(self.ACROSS_TRACK_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 3: 
-			# 	self.readarray(self.ALONG_TRACK_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 4: 
-			# 	self.readarray(self.TRAVEL_TIME_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 5: 
-			# 	self.readarray(self.BEAM_ANGLE_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 7: 
-			# 	self.readarray(self.MEAN_REL_AMPLITUDE_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 9: 
-			# 	self.readarray(self.QUALITY_FACTOR_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 16: 
-			# 	self.readarray(self.BEAM_FLAGS_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 18: 
-			# 	self.readarray(self.BEAM_ANGLE_FORWARD_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 19: 
-			# 	self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 20: 
-			# 	self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 21: 
-			# 	self.readintensityarray(self.INTENSITY_SERIES_ARRAY, scale, offset, datatype)
-			# elif subrecord_id == 22: 
-			# 	self.readarray(self.SECTOR_NUMBER_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 2: 
+				self.readarray(self.ACROSS_TRACK_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 3: 
+				self.readarray(self.ALONG_TRACK_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 4: 
+				self.readarray(self.TRAVEL_TIME_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 5: 
+				self.readarray(self.BEAM_ANGLE_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 7: 
+				self.readarray(self.MEAN_REL_AMPLITUDE_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 9: 
+				self.readarray(self.QUALITY_FACTOR_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 16: 
+				self.readarray(self.BEAM_FLAGS_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 18: 
+				self.readarray(self.BEAM_ANGLE_FORWARD_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 19: 
+				self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 20: 
+				self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 21: 
+				self.readintensityarray(self.INTENSITY_SERIES_ARRAY, scale, offset, datatype)
+			elif subrecord_id == 22: 
+				self.readarray(self.SECTOR_NUMBER_ARRAY, scale, offset, datatype)
 			else:
 				# read to the end of the record to keep in alignment.  This permits us to not have all the decodes in place
 				print ("skipping: %d %d" % (subrecord_id, subrecord_size))
@@ -212,7 +200,7 @@ class SWATH_BATHYMETRY_PING :
 				return s.multiplier, s.offset, s.compressionFlag, datatype
 
 
-		return 0,0,0, 'b'
+		return 1,0,0, 'b'
 
 	def readscalefactors(self):
 		# /* First four byte integer contains the number of scale factors */
@@ -243,31 +231,92 @@ class SWATH_BATHYMETRY_PING :
 
 	def readintensityarray(self, values, scale, offset, datatype):
 		''' 
-		read the time series intensity array
+		read the time series intensity array type 21 subrecord
 		'''
 
-		# need to do this for each beam...
-		# fmt = '>' + str(self.numbeams) + datatype
-
-		hdrfmt = '>hh8s'
+		hdrfmt = '>bl16s'
 		hdrlen = struct.calcsize(hdrfmt)
 		rec_unpack = struct.Struct(hdrfmt).unpack
 		hdr = self.fileptr.read(hdrlen)   # read the record from disc
 		s = rec_unpack(hdr)
-		
-		numsamples = s[0]
-		bottomdetectsamplenumber = s[1]
-		spare = s[2]
+		bitspersample = s[0]
+		appliedcorrections = s[1]
 
-		fmt = '>' + str(numsamples) + 'l'
+		# before we decode the intentisty data, read the sensor specific header
+		self.decodeR2SonicImagerySpecific()
+		
+		for b in range(self.numbeams):
+			# need to do this for each beam...
+			# fmt = '>' + str(self.numbeams) + datatype
+
+			hdrfmt = '>hh8s'
+			hdrlen = struct.calcsize(hdrfmt)
+			rec_unpack = struct.Struct(hdrfmt).unpack
+			hdr = self.fileptr.read(hdrlen)   # read the record from disc
+			s = rec_unpack(hdr)
+			
+			numsamples = s[0]
+			bottomdetectsamplenumber = s[1]
+			spare = s[2]
+
+			fmt = '>' + str(numsamples) + 'l'
+			l = struct.calcsize(fmt)
+			rec_unpack = struct.Struct(fmt).unpack
+			
+			data = self.fileptr.read(l)  
+			raw = rec_unpack(data)
+			for d in raw:
+				values.append((d / scale) + offset)
+
+		return values
+
+	def decodeR2SonicImagerySpecific(self):
+		''' 
+		read the imagery information for the r2sonic 2024
+		'''
+		fmt = '>12s12slll lllll lllll lllll lllhh llll32s'
 		l = struct.calcsize(fmt)
 		rec_unpack = struct.Struct(fmt).unpack
-		
-		data = self.fileptr.read(l)  
+		data = self.fileptr.read(l) 
 		raw = rec_unpack(data)
-		for d in raw:
-			values.append((d / scale) + offset)
-		return values
+		modelnumber = raw[0]
+		serialnumber = raw[1]
+
+		pingtime = raw[2]
+		pingnanotime = raw[3]
+		pingnumber = raw[4]
+		pingperiod = raw[5] / 1.0e6
+		soundspeed = raw[6] / 1.0e2
+
+		frequency = raw[7] / 1.0e3
+		transmitsourcelevel = raw[8] / 1.0e2
+		pulsewidth = raw[9] / 1.0e7
+		beamwidthvertical = raw[10] / 1.0e6
+		beamwidthhorizontal = raw[11] / 1.0e6
+
+		transmitsteeringvertical = raw[12] / 1.0e6
+		transmitsteeringhorizontal = raw[13] / 1.0e6
+		transmitinfo = raw[14]
+		receiverbandwidth = raw[15] / 1.0e4
+		receiversamplerate = raw[16] / 1.0e3
+		
+		receiverrange = raw[17] / 1.0e5
+		receivergain = raw[18] / 1.0e2
+		receiverspreadingloss = raw[19] / 1.0e3
+		absorptioncoefficient = raw[20]/ 1.0e3
+		mounttiltangle = raw[21] / 1.0e6
+
+		receiverinfo = raw[22]
+		reserved = raw[23]
+		numbeams = raw[24]
+
+		moreinfo1 = raw[25] / 1.0e6
+		moreinfo2 = raw[26] / 1.0e6
+		moreinfo3 = raw[27] / 1.0e6
+		moreinfo4 = raw[28] / 1.0e6
+
+		spare = raw[29]
+		return		
 
 	def readarray(self, values, scale, offset, datatype):
 		''' 
@@ -303,6 +352,7 @@ class GSFHEADER:
 		s = rec_unpack(data)
 		
 		self.version   = s[0].decode('utf-8').rstrip('\x00')
+		return
 
 class GSFREADER:
 	def __init__(self, filename):
@@ -376,8 +426,6 @@ class GSFREADER:
 		elif recordidentifier == 2: #SWATH_BATHYMETRY_PING
 		# pkpk need to make a dummy scale factor here and then return it.  This is because it is not in every ping, only the first one.
 			dg = SWATH_BATHYMETRY_PING(self.fileptr, numberofbytes, recordidentifier, hdrlen)
-			# dg.read()
-
 			return dg.recordidentifier, recordidentifier, dg 
 
 		# elif recordidentifier == 3: # SOUND_VELOCITY_PROFILE
