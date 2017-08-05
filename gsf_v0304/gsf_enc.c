@@ -10,7 +10,9 @@
  *
  * Restrictions/Limitations :
  * 1) This library assumes the host computer uses the ASCII character set.
- * 2) This library assumes that the data types u_short and u_int are defined
+ * 2) This librgsfDecodeSwathBathymetryPing
+ 
+ ary assumes that the data types u_short and u_int are defined
  *    on the host machine, where a u_short is a 16 bit unsigned integer, and
  *    a u_int is a 32 bit unsigned integer.
  * 3) This library assumes that the type short is at least 16 bits, and that

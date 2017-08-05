@@ -1,0 +1,16 @@
+sudo: false
+
+language: cpp
+
+compiler:
+  - gcc
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - g++-5
+
+script:
+  - CXX=g++-5 make test
