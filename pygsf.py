@@ -22,6 +22,8 @@ import time
 import datetime
 import math
 import random
+from datetime import datetime
+from datetime import timedelta
 
 #/* The high order 4 bits are used to define the field size for this array */
 GSF_FIELD_SIZE_DEFAULT  = 0x00  #/* Default values for field size are used used for all beam arrays */
@@ -30,11 +32,52 @@ GSF_FIELD_SIZE_TWO      = 0x20  #/* value saved as a two byte value after applyi
 GSF_FIELD_SIZE_FOUR     = 0x40  #/* value saved as a four byte value after applying scale and offset */
 GSF_MAX_PING_ARRAY_SUBRECORDS = 26
 
+###############################################################################
 def main():
-
 	testreader()
 
-###############################################################################
+def testreader():
+	'''
+	sample read script so we can see how to use the code
+	'''
+	start_time = time.time() # time the process so we can keep it quick
+	writeConditionedFile = False
+	exclude = [12]
+	filename = "C:/development/python/sample_subset.gsf"
+
+	if writeConditionedFile:
+		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), "subset.gsf")
+		outFileName = createOutputFileName(outFileName)
+		outFilePtr = open(outFileName, 'wb')
+		print ("output file: %s" % outFileName)
+
+	# create a GSFREADER class and pass the filename
+	r = GSFREADER(filename)
+	scalefactors = r.loadscalefactors()
+
+	while r.moreData():
+		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
+		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
+		numberofbytes, recordidentifier, datagram = r.readDatagram()
+		# print(recordidentifier, end='')
+
+		# read the bytes into a buffer 
+		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
+		if recordidentifier == 2: #SWATH_BATHYMETRY_PING
+			datagram.scalefactors = scalefactors	
+			datagram.read()
+			print ("ping at offset:", datagram.time)
+			# print ("%.3f, %.3f" % (datagram.longitude, datagram.latitude))
+
+		if recordidentifier in exclude:
+			continue
+
+		# if writeConditionedFile:
+		# 	outFilePtr.write(rawBytes)
+
+	print("Duration %.3fs" % (time.time() - start_time )) # time the process
+
+	return
 
 ###############################################################################
 class UNKNOWN_RECORD:
@@ -50,25 +93,12 @@ class UNKNOWN_RECORD:
 	def read(self):
 		self.data = self.fileptr.read(self.numberofbytes)
 
-# class SCALEINFO:
-# 	def __init__(self):
-# 		self.compressionFlag = 0    /* Specifies bytes of storage in high order nibble and type of compression in low order nibble */
-# 		self.multiplier = 0.0
-# 		self.offset = 0
-# 		# unsigned char   compressionFlag;    /* Specifies bytes of storage in high order nibble and type of compression in low order nibble */
-# 		# double          multiplier;         /* the scale factor (millionths)for the array */
-# 		# double          offset;             /* dc offset to scale data by */
-# } gsfScaleInfo;
-
 class SCALEFACTOR:
 	def __init__(self):
 		self.subrecordID = 0    
 		self.compressionFlag = 0    #/* Specifies bytes of storage in high order nibble and type of compression in low order nibble */
 		self.multiplier = 0.0
 		self.offset = 0
-# 		    self.numArraySubrecords = 0 #/* the number of scaling factors we actually have */
-#     		self.gsfScaleInfo    scaleTable[GSF_MAX_PING_ARRAY_SUBRECORDS];
-	
 	
 class SWATH_BATHYMETRY_PING :
 	def __init__(self, fileptr, numbytes, recordidentifier, hdrlen):
@@ -104,7 +134,7 @@ class SWATH_BATHYMETRY_PING :
 		self.fileptr.seek(self.offset + self.hdrlen , 0)   # move the file pointer to the start of the record so we can read from disc              
 		data = self.fileptr.read(hdrlen)   # read the record from disc
 		s = rec_unpack(data)
-		self.time 			= s[0] #ll
+		self.time 			= s[0] #nanoseconds
 		self.longitude 		= s[2] / 10000000 # l
 		self.latitude		= s[3] / 10000000 # l
 		self.numbeams 		= s[4] # h
@@ -124,7 +154,7 @@ class SWATH_BATHYMETRY_PING :
 		self.gpstidecorrector	= s[18] / 100 # l
 		self.spare			= s[19] # h
 
-		while (self.fileptr.tell() < self.offset + self.numbytes):
+		while (self.fileptr.tell() < self.offset + self.numbytes): #dont read past the end of the packet length.  This should never happen!
 			fmt = '>l'
 			fmtlen = struct.calcsize(fmt)
 			rec_unpack = struct.Struct(fmt).unpack
@@ -135,7 +165,7 @@ class SWATH_BATHYMETRY_PING :
 			subrecord_size = s[0] & 0x00FFFFFF
 			# print ("Subrec: %d %d" % (subrecord_id, subrecord_size))
 			# now decode the subrecord
-			
+			curr = self.fileptr.tell()
 			scale, offset, compressionFlag, datatype = self.getscalefactor(subrecord_id, subrecord_size / int(self.numbeams))
 			
 			if subrecord_id == 100: 
@@ -164,13 +194,14 @@ class SWATH_BATHYMETRY_PING :
 				self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
 			elif subrecord_id == 21: 
 				self.readintensityarray(self.INTENSITY_SERIES_ARRAY, scale, offset, datatype)
+				self.fileptr.seek(curr+subrecord_size-1,0)
 			elif subrecord_id == 22: 
 				self.readarray(self.SECTOR_NUMBER_ARRAY, scale, offset, datatype)
 			else:
 				# read to the end of the record to keep in alignment.  This permits us to not have all the decodes in place
-				print ("skipping: %d %d" % (subrecord_id, subrecord_size))
-				if subrecord_id == 21: # pk  we should not realy do this, but it is required.  We need to investigate why todo
-					subrecord_size -= 1
+				# print ("skipping rec: %d size: %d offset: %d" % (subrecord_id, subrecord_size, self.fileptr.tell()))
+				# if subrecord_id == 21: # pk  we should not realy do this, but it is required.  We need to investigate why todo
+				# 	subrecord_size -= 1
 				self.fileptr.read(subrecord_size)
 
 		return
@@ -243,6 +274,7 @@ class SWATH_BATHYMETRY_PING :
 		appliedcorrections = s[1]
 
 		# before we decode the intentisty data, read the sensor specific header
+
 		self.decodeR2SonicImagerySpecific()
 		
 		for b in range(self.numbeams):
@@ -259,7 +291,7 @@ class SWATH_BATHYMETRY_PING :
 			bottomdetectsamplenumber = s[1]
 			spare = s[2]
 
-			fmt = '>' + str(numsamples) + 'l'
+			fmt = '>' + str(numsamples) + 'H'
 			l = struct.calcsize(fmt)
 			rec_unpack = struct.Struct(fmt).unpack
 			
@@ -267,28 +299,29 @@ class SWATH_BATHYMETRY_PING :
 			raw = rec_unpack(data)
 			for d in raw:
 				values.append((d / scale) + offset)
-
+			# print (values[bottomdetectsamplenumber])
 		return values
 
 	def decodeR2SonicImagerySpecific(self):
 		''' 
 		read the imagery information for the r2sonic 2024
 		'''
-		fmt = '>12s12slll lllll lllll lllll lllhh llll32s'
+		fmt = '>12s12slll lllll lllll lllll lllhh lllll l32s'
 		l = struct.calcsize(fmt)
 		rec_unpack = struct.Struct(fmt).unpack
 		data = self.fileptr.read(l) 
 		raw = rec_unpack(data)
-		modelnumber = raw[0]
-		serialnumber = raw[1]
+		
+		self.modelnumber = raw[0]
+		self.serialnumber = raw[1]
 
-		pingtime = raw[2]
-		pingnanotime = raw[3]
-		pingnumber = raw[4]
-		pingperiod = raw[5] / 1.0e6
-		soundspeed = raw[6] / 1.0e2
+		self.pingtime = raw[2]
+		self.pingnanotime = raw[3]
+		self.pingnumber = raw[4]
+		self.pingperiod = raw[5] / 1.0e6
+		self.soundspeed = raw[6] / 1.0e2
 
-		frequency = raw[7] / 1.0e3
+		self.frequency = raw[7] / 1.0e3
 		transmitsourcelevel = raw[8] / 1.0e2
 		pulsewidth = raw[9] / 1.0e7
 		beamwidthvertical = raw[10] / 1.0e6
@@ -314,8 +347,10 @@ class SWATH_BATHYMETRY_PING :
 		moreinfo2 = raw[26] / 1.0e6
 		moreinfo3 = raw[27] / 1.0e6
 		moreinfo4 = raw[28] / 1.0e6
+		moreinfo5 = raw[29] / 1.0e6
+		moreinfo6 = raw[30] / 1.0e6
 
-		spare = raw[29]
+		spare = raw[31]
 		return		
 
 	def readarray(self, values, scale, offset, datatype):
@@ -331,6 +366,16 @@ class SWATH_BATHYMETRY_PING :
 		for d in raw:
 			values.append((d / scale) + offset)
 		return values
+
+	def currentRecordDateTime(self):
+		return self.from_timestamp(self.time)
+
+	def to_timestamp(self, recordDate):
+		return (recordDate - datetime(1970, 1, 1)).total_seconds()
+
+	def from_timestamp(self, unixtime):
+		return datetime(1970, 1 ,1) + timedelta(unixtime)
+
 
 class GSFHEADER:
 	def __init__(self, fileptr, numbytes, recordidentifier, hdrlen):
@@ -356,6 +401,9 @@ class GSFHEADER:
 
 class GSFREADER:
 	def __init__(self, filename):
+		'''
+		Class to read generic sensor format files.
+		'''
 		if not os.path.isfile(filename):
 			print ("file not found:", filename)
 		self.fileName = filename
@@ -386,7 +434,7 @@ class GSFREADER:
 
 	def __str__(self):
 		'''
-		preTRAVEL_TIME_ARRAYy print this class
+		pretty print this class
 		'''
 		return pprint.pformat(vars(self))
 
@@ -417,26 +465,23 @@ class GSFREADER:
 	def readDatagram(self):
 		# read the datagram header.  This permits us to skip datagrams we do not support
 		numberofbytes, recordidentifier, haschecksumnumberofbytes, hdrlen = self.readDatagramHeader()
-		# print ("%d %d %d " % (numberofbytes, recordidentifier, self.fileptr.tell()))
+		
 		if recordidentifier == 1: # Header, the GSF Version
-			# create a class for this datagram, but only decode if the resulting class is called by the user.  This makes it much faster
+			# create a class for this datagram, but only decode if the resulting class if called by the user.  This makes it much faster
 			dg = GSFHEADER(self.fileptr, numberofbytes, recordidentifier, hdrlen)
 			return numberofbytes, recordidentifier, dg
-
+		
 		elif recordidentifier == 2: #SWATH_BATHYMETRY_PING
-		# pkpk need to make a dummy scale factor here and then return it.  This is because it is not in every ping, only the first one.
 			dg = SWATH_BATHYMETRY_PING(self.fileptr, numberofbytes, recordidentifier, hdrlen)
 			return dg.recordidentifier, recordidentifier, dg 
-
+		
 		# elif recordidentifier == 3: # SOUND_VELOCITY_PROFILE
 			# dg = SOUND_VELOCITY_PROFILE(self.fileptr, numberofbytes)
 			# return dg.recordidentifier, dg 
+		
 		else:
 			dg = UNKNOWN_RECORD(self.fileptr, numberofbytes, recordidentifier, hdrlen)
 			return numberofbytes, recordidentifier, dg
-
-			# self.fileptr.seek(numberofbytes, 1)
-			# return numberofbytes, recordidentifier, 0
 
 	def readDatagramHeader(self):
 		'''
@@ -474,49 +519,6 @@ class GSFREADER:
 		else:
 			return (sizeofdata + self.hdrlen, recordidentifier, haschecksum, self.hdrlen )
 
-def testreader():
-	'''
-	sample read script so we can see how to use the code
-	'''
-	start_time = time.time() # time the process so we can keep it quick
-	writeConditionedFile = False
-	exclude = [12]
-	filename = "C:/development/python/sample_subset.gsf"
-
-	if writeConditionedFile:
-		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), "subset.gsf")
-		outFileName = createOutputFileName(outFileName)
-		outFilePtr = open(outFileName, 'wb')
-		print ("output file: %s" % outFileName)
-
-	# create a GSFREADER class and pass the filename
-	r = GSFREADER(filename)
-	scalefactors = r.loadscalefactors()
-
-	while r.moreData():
-		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
-		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
-		numberofbytes, recordidentifier, datagram = r.readDatagram()
-		# print(recordidentifier, end='')
-		print (r.fileptr.tell())
-
-		# read the bytes into a buffer 
-		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
-		if recordidentifier == 2: #SWATH_BATHYMETRY_PING
-			datagram.scalefactors = scalefactors	
-			datagram.read()
-			print ("ping at offset:", datagram.time)
-			# print ("%.3f, %.3f" % (datagram.longitude, datagram.latitude))
-
-		if recordidentifier in exclude:
-			continue
-
-		# if writeConditionedFile:
-		# 	outFilePtr.write(rawBytes)
-
-	print("Duration %.3fs" % (time.time() - start_time )) # time the process
-
-	return
 
 def isBitSet(int_type, offset):
 	'''testBit() returns a nonzero result, 2**offset, if the bit at 'offset' is one.'''
