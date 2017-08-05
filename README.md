@@ -4,11 +4,18 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
+* iterate and see how often settings change.  We can do this by writing settings changes to shp or csv file.
+* write out to a shape file so we can see where each file exists
+* need to make Angular Response Curves for each frequency
 * processing record
 * attitude record
 * sound velocity record
 
 # DONE
+* waterfall image creation done for each frequency
+* sample read code in place
+* conditioner in place which strips attitude records.  We can easily use this to strip by frequency
+* can read a bathy record of type r2sonic 2024.  this what we need for multispectral challenge
 * implement exclude, so we can strip out the attitide records.  This will speed up development
 * can read the GSF header record with the version string
 * basic loop in place
