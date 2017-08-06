@@ -49,10 +49,10 @@ def testreader():
 	'''
 	start_time = time.time() # time the process so we can keep it quick
 	filename = "C:/development/python/sample_subset.gsf"
-
+	pingcount = 0
 	# create a GSFREADER class and pass the filename
 	r = GSFREADER(filename)
-	scalefactors = r.loadscalefactors()
+	# r.loadnavigation()
 
 	while r.moreData():
 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
@@ -61,12 +61,12 @@ def testreader():
 		# print(recordidentifier, end='')
 
 		if recordidentifier == SWATH_BATHYMETRY:
-			datagram.scalefactors = scalefactors	
 			datagram.read()
-			# print (" %s ping #: %d %d %.2f" % (datagram.currentRecordDateTime(), datagram.pingnumber, datagram.frequency, datagram.DEPTH_ARRAY[2]))
-
+			if datagram.pingnumber == 76610:
+				print (" %s ping #: %d %d %.2f" % (datagram.currentRecordDateTime(), datagram.pingnumber, datagram.frequency, datagram.DEPTH_ARRAY[2]))
+			pingcount += 1
 	print("Duration %.3fs" % (time.time() - start_time )) # time the process
-
+	print ("PingCount:", pingcount)
 	return
 
 ###############################################################################
@@ -80,13 +80,13 @@ def conditioner():
 	filename = "C:/development/python/sample.gsf"
 
 	if writeConditionedFile:
-		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), "subset.gsf")
+		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), os.path.splitext(os.path.basename(filename))[0] + "_subset.gsf")
 		outFileName = createOutputFileName(outFileName)
 		outFilePtr = open(outFileName, 'wb')
 		print ("output file: %s" % outFileName)
 
 	# create a GSFREADER class and pass the filename
-	r = GSFREADER(filename)
+	r = GSFREADER(filename, False)
 
 	excluded = 0 
 	while r.moreData():
@@ -110,15 +110,16 @@ def conditioner():
 
 ###############################################################################
 class UNKNOWN_RECORD:
-	'''used as a convenience tool for datagrams we have no bespoke classes.  BeTRAVEL_TIME_ARRAYer to make a bespoke class'''
+	'''used as a convenience tool for datagrams we have no bespoke classes.  Better to make a bespoke class'''
 	def __init__(self, fileptr, numbytes, recordidentifier, hdrlen):
 		self.recordidentifier = recordidentifier
 		self.offset = fileptr.tell()
 		self.hdrlen = hdrlen
 		self.numbytes = numbytes
 		self.fileptr = fileptr
-		self.fileptr.seek(numbytes, 1)
+		self.fileptr.seek(numbytes, 1) # set the file ptr to the end of the record
 		self.data = ""
+
 	def read(self):
 		self.data = self.fileptr.read(self.numberofbytes)
 
@@ -152,7 +153,7 @@ class SWATH_BATHYMETRY_PING :
 		self.SECTOR_NUMBER_ARRAY = []
 		self.INTENSITY_SERIES_ARRAY = []
 
-	def read(self):
+	def read(self, headeronly=False):
 		self.fileptr.seek(self.offset + self.hdrlen, 0)   # move the file pointer to the start of the record so we can read from disc              
 
 		# read ping header
@@ -193,6 +194,14 @@ class SWATH_BATHYMETRY_PING :
 			subrecord_id = (s[0] & 0xFF000000) >> 24
 			subrecord_size = s[0] & 0x00FFFFFF
 
+			# skip the record for performance reasons.  Very handy in some circumstances
+			# if headeronly:
+			# 	self.fileptr.seek(subrecord_size, 1) #move forwards to the end of teh record
+			# 	if subrecord_id == 21: 
+			# 		if subrecord_size % 4 > 0:
+			# 			self.fileptr.seek(4 - (subrecord_size % 4), 1) #pkpk we should not need this!!!
+			# 	continue
+
 			# now decode the subrecord
 			curr = self.fileptr.tell()
 			scale, offset, compressionFlag, datatype = self.getscalefactor(subrecord_id, subrecord_size / int(self.numbeams))
@@ -223,7 +232,11 @@ class SWATH_BATHYMETRY_PING :
 				self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
 			elif subrecord_id == 21: 
 				self.readintensityarray(self.INTENSITY_SERIES_ARRAY, scale, offset, datatype)
-				self.fileptr.seek(curr+subrecord_size-1,0)
+				if subrecord_size % 4 > 0:
+					self.fileptr.seek(4 - (subrecord_size % 4), 1) #pkpk we should not need this!!!
+					
+				# self.fileptr.seek(self.offset + self.numbytes, 0) #pkpk we should not need this!!!
+				# self.fileptr.seek(curr+subrecord_size-1,0) 
 			elif subrecord_id == 22: 
 				self.readarray(self.SECTOR_NUMBER_ARRAY, scale, offset, datatype)
 			else:
@@ -231,7 +244,8 @@ class SWATH_BATHYMETRY_PING :
 				# print ("skipping rec: %d size: %d offset: %d" % (subrecord_id, subrecord_size, self.fileptr.tell()))
 				# if subrecord_id == 21: # pk  we should not realy do this, but it is required.  We need to investigate why todo
 				# 	subrecord_size -= 1
-				self.fileptr.read(subrecord_size)
+				self.fileptr.seek(subrecord_size, 1) #move forwards to the end of teh record
+				# self.fileptr.read(subrecord_size)
 		return
 
 	def getscalefactor(self, ID, bytes_per_value):
@@ -419,7 +433,7 @@ class GSFHEADER:
 
 ###############################################################################
 class GSFREADER:
-	def __init__(self, filename):
+	def __init__(self, filename, loadscalefactors=False):
 		'''
 		Class to read generic sensor format files.
 		'''
@@ -430,10 +444,13 @@ class GSFREADER:
 		self.fileSize = os.path.getsize(filename)
 		self.hdrfmt = ">LL"
 		self.hdrlen = struct.calcsize(self.hdrfmt)
+		self.scalefactors = []
+		if loadscalefactors:
+			self.scalefactors = self.loadscalefactors()
 
 	def moreData(self):
 		bytesRemaining = self.fileSize - self.fileptr.tell()
-		# print ("current file ptr position:", self.fileptr.tell())
+		# print ("current file ptr position: %d size %d" % ( self.fileptr.tell(), self.fileSize))
 		return bytesRemaining
 
 	def currentPtr(self):
@@ -480,6 +497,23 @@ class GSFREADER:
 				return datagram.scalefactors
 		self.fileptr.seek(curr, 0)
 		return None
+	
+	def loadnavigation(self):
+		'''
+		rewind, load the navigation from the bathy records and rewind
+		'''
+		navigation = []
+		curr = self.fileptr.tell()
+		self.rewind()
+
+		while self.moreData():
+			numberofbytes, recordidentifier, datagram = self.readDatagram()
+			if recordidentifier == SWATH_BATHYMETRY:
+				datagram.read(True)
+				navigation.append([datagram.time, datagram.longitude, datagram.latitude])
+		
+		self.fileptr.seek(curr, 0)
+		return navigation
 		
 	def getrecordcount(self):
 		'''
@@ -499,7 +533,7 @@ class GSFREADER:
 		
 	def readDatagram(self):
 		# read the datagram header.  This permits us to skip datagrams we do not support
-		numberofbytes, recordidentifier, haschecksumnumberofbytes, hdrlen = self.readDatagramHeader()
+		numberofbytes, recordidentifier, haschecksumnumberofbytes, hdrlen = self.sniffDatagramHeader()
 		
 		if recordidentifier == HEADER:
 			# create a class for this datagram, but only decode if the resulting class if called by the user.  This makes it much faster
@@ -508,6 +542,7 @@ class GSFREADER:
 		
 		elif recordidentifier == SWATH_BATHYMETRY:
 			dg = SWATH_BATHYMETRY_PING(self.fileptr, numberofbytes, recordidentifier, hdrlen)
+			dg.scalefactors = self.scalefactors
 			return numberofbytes, recordidentifier, dg 
 		
 		# elif recordidentifier == 3: # SOUND_VELOCITY_PROFILE
@@ -516,9 +551,10 @@ class GSFREADER:
 		
 		else:
 			dg = UNKNOWN_RECORD(self.fileptr, numberofbytes, recordidentifier, hdrlen)
+			# self.fileptr.seek(numberofbytes, 1) # set the file ptr to the end of the record			
 			return numberofbytes, recordidentifier, dg
 
-	def readDatagramHeader(self):
+	def sniffDatagramHeader(self):
 		'''
 		read the las file header from disc
 		'''
@@ -528,10 +564,10 @@ class GSFREADER:
 			# we have reached the end of the fle, so quit
 			self.fileptr.seek(self.fileSize,0)
 			return (0, 0, False, 0)
+
 		# version header format
 		data = self.fileptr.read(self.hdrlen)
 		s = struct.unpack(self.hdrfmt, data)
-
 		sizeofdata = s[0]
 		recordidentifier = s[1]
 		haschecksum = recordidentifier & 0x80000000
@@ -546,7 +582,7 @@ class GSFREADER:
 			chksum = self.fileptr.read(4)
 			return (sizeofdata + self.hdrlen + 4, recordidentifier, haschecksum)
 		
-		# now reset file pointer
+		# now reset file pointer to the start of the record
 		self.fileptr.seek(curr, 0)
 		
 		if haschecksum:

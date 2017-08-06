@@ -5,6 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
+gsf_v0304
 
 # Distribution / packaging
 .Python

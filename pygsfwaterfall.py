@@ -369,18 +369,6 @@ def update_progress(job_title, progress):
 	sys.stdout.write(msg)
 	sys.stdout.flush()
 
-def loadNavigation(fileName):	
-	'''loads all the navigation into lists'''
-	navigation = []
-	r = pyall.ALLReader(fileName)
-	while r.moreData():
-		TypeOfDatagram, datagram = r.readDatagram()
-		if (TypeOfDatagram == 'P'):
-			datagram.read()
-			navigation.append([datagram.Time, datagram.Latitude, datagram.Longitude])
-	r.close()
-	return navigation
-
 def spliceImages(img1, img2):
 	# images = map(Image.open, ['Test1.jpg', 'Test2.jpg', 'Test3.jpg'])
 	images = [img1, img2]

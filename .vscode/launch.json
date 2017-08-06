@@ -16,8 +16,10 @@
                 "WaitOnNormalExit",
                 "RedirectOutput"
 			],
-					"args": ["-color", "graylog", "-i", "C:/development/python/sample_subset.gsf"\
+					"args": ["-i", "F:/Projects/multispectral/20161130 - Patricia Bay/GSF/20161129-2148 - 0001-2026_1.gsf"\
 
         },
     ]
 }
+					"args": ["-color", "graylog", "-i", "C:/development/python/sample_subset.gsf"\
+
