@@ -1,5 +1,5 @@
 import sys
-sys.path.append("C:/development/Python/pyall")
+# sys.path.append("C:/development/Python/pyall")
 
 import argparse
 import bisect
@@ -41,6 +41,9 @@ def main():
 		if not filename.endswith('.gsf'):
 			print ("File %s is not a .all file, skipping..." % (filename))
 			continue
+		if not os.path.isfile(filename):
+			print ("file not found:", filename)
+			exit()
 
 		xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
 		print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
@@ -80,9 +83,9 @@ def createWaterfall(filename, colorScale, beamCount, zoom=1.0, clip=0, invert=Tr
 			datagram.scalefactors = scalefactors	
 			datagram.read()
 
-			# if datagram.frequency != 200000:
+			if datagram.frequency != 100000:
 			# 	print ("skipping freq: %d" % datagram.frequency)
-			# 	continue
+				continue
 			# we need to remember the actual data extents so we can set the color palette mappings to the same limits. 
 			minBS = min(minBS, min(datagram.MEAN_REL_AMPLITUDE_ARRAY))
 			maxBS = max(maxBS, max(datagram.MEAN_REL_AMPLITUDE_ARRAY))

@@ -4,16 +4,13 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
+* need to make Angular Response Curves for each frequency
 * make a las file for each frequency where intensity is the amplitude data
 * make a las file of RGB where each color is an intensity
 * iterate and see how often settings change.  We can do this by writing settings changes to shp or csv file.
-* write out to a shape file so we can see where each file exists
-* need to make Angular Response Curves for each frequency
-* processing record
-* attitude record
-* sound velocity record
 
 # DONE
+* write out to a shape file so we can see where each file exists
 * waterfall image creation done for each frequency
 * sample read code in place
 * conditioner in place which strips attitude records.  We can easily use this to strip by frequency

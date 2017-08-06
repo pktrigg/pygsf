@@ -52,7 +52,7 @@ def testreader():
 	pingcount = 0
 	# create a GSFREADER class and pass the filename
 	r = GSFREADER(filename)
-	# r.loadnavigation()
+	r.loadnavigation()
 
 	while r.moreData():
 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
@@ -62,51 +62,50 @@ def testreader():
 
 		if recordidentifier == SWATH_BATHYMETRY:
 			datagram.read()
-			if datagram.pingnumber == 76610:
-				print (" %s ping #: %d %d %.2f" % (datagram.currentRecordDateTime(), datagram.pingnumber, datagram.frequency, datagram.DEPTH_ARRAY[2]))
+			# print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency))
 			pingcount += 1
 	print("Duration %.3fs" % (time.time() - start_time )) # time the process
 	print ("PingCount:", pingcount)
 	return
 
 ###############################################################################
-def conditioner():
-	'''
-	sample condition script so we can strip out unrequired datagrams such as verbose attitude records
-	'''
-	start_time = time.time() # time the process so we can keep it quick
-	writeConditionedFile = True
-	exclude = [ATTITUDE] #exclude records of this type (attitude is type 12)
-	filename = "C:/development/python/sample.gsf"
+# def conditioner():
+# 	'''
+# 	sample condition script so we can strip out unrequired datagrams such as verbose attitude records
+# 	'''
+# 	start_time = time.time() # time the process so we can keep it quick
+# 	writeConditionedFile = True
+# 	exclude = [ATTITUDE] #exclude records of this type (attitude is type 12)
+# 	filename = "C:/development/python/sample.gsf"
 
-	if writeConditionedFile:
-		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), os.path.splitext(os.path.basename(filename))[0] + "_subset.gsf")
-		outFileName = createOutputFileName(outFileName)
-		outFilePtr = open(outFileName, 'wb')
-		print ("output file: %s" % outFileName)
+# 	if writeConditionedFile:
+# 		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), os.path.splitext(os.path.basename(filename))[0] + "_subset.gsf")
+# 		outFileName = createOutputFileName(outFileName)
+# 		outFilePtr = open(outFileName, 'wb')
+# 		print ("output file: %s" % outFileName)
 
-	# create a GSFREADER class and pass the filename
-	r = GSFREADER(filename, False)
+# 	# create a GSFREADER class and pass the filename
+# 	r = GSFREADER(filename, False)
 
-	excluded = 0 
-	while r.moreData():
-		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
-		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
-		numberofbytes, recordidentifier, datagram = r.readDatagram()
+# 	excluded = 0 
+# 	while r.moreData():
+# 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
+# 		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
+# 		numberofbytes, recordidentifier, datagram = r.readDatagram()
 
-		# read the bytes into a buffer 
-		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
+# 		# read the bytes into a buffer 
+# 		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
 
-		if recordidentifier in exclude:
-			excluded += 1
-			continue
+# 		if recordidentifier in exclude:
+# 			excluded += 1
+# 			continue
 
-		if writeConditionedFile:
-			outFilePtr.write(rawBytes)
+# 		if writeConditionedFile:
+# 			outFilePtr.write(rawBytes)
 
-	print("Duration %.3fs record count excluded: %d" % ((time.time() - start_time ), excluded)) # time the process
+# 	print("Duration %.3fs record count excluded: %d" % ((time.time() - start_time ), excluded)) # time the process
 
-	return
+# 	return
 
 ###############################################################################
 class UNKNOWN_RECORD:
@@ -195,15 +194,15 @@ class SWATH_BATHYMETRY_PING :
 			subrecord_size = s[0] & 0x00FFFFFF
 
 			# skip the record for performance reasons.  Very handy in some circumstances
-			# if headeronly:
-			# 	self.fileptr.seek(subrecord_size, 1) #move forwards to the end of teh record
-			# 	if subrecord_id == 21: 
-			# 		if subrecord_size % 4 > 0:
-			# 			self.fileptr.seek(4 - (subrecord_size % 4), 1) #pkpk we should not need this!!!
-			# 	continue
+			if headeronly:
+				if subrecord_id == 21: 
+					self.fileptr.seek(self.offset + self.numbytes, 0) #move forwards to the end of the record as we cannot trust the record length from the 2024
+				else:
+					self.fileptr.seek(subrecord_size, 1) #move forwards to the end of teh record
+				continue
 
 			# now decode the subrecord
-			curr = self.fileptr.tell()
+			# curr = self.fileptr.tell()
 			scale, offset, compressionFlag, datatype = self.getscalefactor(subrecord_id, subrecord_size / int(self.numbeams))
 			
 			if subrecord_id == 100: 
@@ -231,21 +230,15 @@ class SWATH_BATHYMETRY_PING :
 			elif subrecord_id == 20: 
 				self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
 			elif subrecord_id == 21: 
+				before = self.fileptr.tell()
 				self.readintensityarray(self.INTENSITY_SERIES_ARRAY, scale, offset, datatype)
 				if subrecord_size % 4 > 0:
 					self.fileptr.seek(4 - (subrecord_size % 4), 1) #pkpk we should not need this!!!
-					
-				# self.fileptr.seek(self.offset + self.numbytes, 0) #pkpk we should not need this!!!
-				# self.fileptr.seek(curr+subrecord_size-1,0) 
 			elif subrecord_id == 22: 
 				self.readarray(self.SECTOR_NUMBER_ARRAY, scale, offset, datatype)
 			else:
 				# read to the end of the record to keep in alignment.  This permits us to not have all the decodes in place
-				# print ("skipping rec: %d size: %d offset: %d" % (subrecord_id, subrecord_size, self.fileptr.tell()))
-				# if subrecord_id == 21: # pk  we should not realy do this, but it is required.  We need to investigate why todo
-				# 	subrecord_size -= 1
 				self.fileptr.seek(subrecord_size, 1) #move forwards to the end of teh record
-				# self.fileptr.read(subrecord_size)
 		return
 
 	def getscalefactor(self, ID, bytes_per_value):
@@ -511,8 +504,8 @@ class GSFREADER:
 			if recordidentifier == SWATH_BATHYMETRY:
 				datagram.read(True)
 				navigation.append([datagram.time, datagram.longitude, datagram.latitude])
-		
 		self.fileptr.seek(curr, 0)
+		print ("Navigation records loaded:", len(navigation))
 		return navigation
 		
 	def getrecordcount(self):
