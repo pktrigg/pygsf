@@ -1,8 +1,8 @@
-#name:		  pygsfConditioner
-#created:	   April 2017
+#name:			pygsfConditioner
+#created:		April 2017
 #by:			p.kennedy@fugro.com
-#description:   python module to pre-process a gsf sonar file and do useful hings with it
-#			   See readme.md for more details
+#description:	python module to pre-process a gsf sonar file and do useful hings with it
+#				See readme.md for more details
 # more changes
 
 import csv
