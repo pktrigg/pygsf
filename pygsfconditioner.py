@@ -66,22 +66,18 @@ def main():
 	if len(exclude) > 0:
 		print ("Excluding datagrams: %s :" % exclude)
 
-	# if args.extractbs:
-	#	 extractBackscatter = True
-	#	 writeConditionedFile= False #we do not need to write out a .gsf file
-	#	 # we need a generic set of beams into which we can insert individual ping data.  Thhis will be the angular respnse curve
-	#	 beamdetail = [0,0,0,0]
-	#	 startAngle = -90
-	#	 ARC = [pygsf.cBeam(beamdetail, i) for i in range(startAngle, -startAngle)]
-	#	 beamPointingAngles = []
-	#	 transmitSector = []
-	#	 writeConditionedFile = False # we dont need to write a conditioned .gsf file
-	#	 outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve.csv")
-	#	 outFileName = createOutputFileName(outFileName)
+	if args.extractbs:
+		extractBackscatter = True
+		writeConditionedFile= False #we do not need to write out a .gsf file
+		# we need a generic set of beams into which we can insert individual ping data.  Thhis will be the angular respnse curve
+		beamdetail = [0,0,0,0]
+		startAngle = -90
+		ARC = [pygsf.cBeam(beamdetail, i) for i in range(startAngle, -startAngle)]
+		beamPointingAngles = []
+		transmitSector = []
 
-	# if args.bscorr:
-	#	 extractBSCorr=True
-	#	 writeConditionedFile= False #we do not need to write out a .gsf file
+		outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve.csv")
+		outFileName = createOutputFileName(outFileName)
 
 	for filename in matches:
 		if writeConditionedFile:
@@ -102,23 +98,23 @@ def main():
 			# read the bytes into a buffer 
 			rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
 
-			# if extractBackscatter:
-			#	 '''to extract backscatter angular response curve we need to keep a count and sum of gsf samples in a per degree sector'''
-			#	 '''to do this, we need to take into account the take off angle of each beam'''
-			#	 if recordidentifier == 'N':
-			#		 datagram.read()
-			#		 beamPointingAngles = datagram.BeamPointingAngle
-			#		 transmitSector = datagram.TransmitSectorNumber
-			#	 if recordidentifier == 'Y':
-			#		 if len(beamPointingAngles)==0:
-			#			 continue #we dont yet have any raw ranges so we dont have a beam pattern so skip
-			#		 datagram.read()
-			#		 for i in range(len(datagram.beams)):
-			#			 arcIndex = round(beamPointingAngles[i]-startAngle) #quickly find the correct slot for the data
-			#			 ARC[arcIndex].sampleSum = ARC[arcIndex].sampleSum + sum(datagram.beams[i].samples)
-			#			 ARC[arcIndex].numberOfSamplesPerBeam = ARC[arcIndex].numberOfSamplesPerBeam + len(datagram.beams[i].samples)
-			#			 ARC[arcIndex].sector = transmitSector[i]
-			#	 continue
+			if extractBackscatter:
+				'''to extract backscatter angular response curve we need to keep a count and sum of gsf samples in a per degree sector'''
+				'''to do this, we need to take into account the take off angle of each beam'''
+				if recordidentifier == 'N':
+					datagram.read()
+					beamPointingAngles = datagram.BeamPointingAngle
+					transmitSector = datagram.TransmitSectorNumber
+				if recordidentifier == 'Y':
+					if len(beamPointingAngles)==0:
+						continue #we dont yet have any raw ranges so we dont have a beam pattern so skip
+					datagram.read()
+					for i in range(len(datagram.beams)):
+						arcIndex = round(beamPointingAngles[i]-startAngle) #quickly find the correct slot for the data
+						ARC[arcIndex].sampleSum = ARC[arcIndex].sampleSum + sum(datagram.beams[i].samples)
+						ARC[arcIndex].numberOfSamplesPerBeam = ARC[arcIndex].numberOfSamplesPerBeam + len(datagram.beams[i].samples)
+						ARC[arcIndex].sector = transmitSector[i]
+				continue
 			
 
 			# the user has opted to skip this datagram, so continue
@@ -135,7 +131,6 @@ def main():
 	# print out the extracted backscatter angular response curve
 	# if extractBackscatter:
 	# 	print("Writing backscatter angular response curve to: %s" % outFileName)
-		
 	# 	# compute the mean response across the swath
 	# 	responseSum = 0
 	# 	responseCount = 0
@@ -144,7 +139,6 @@ def main():
 	# 			responseSum = responseSum = (beam.sampleSum/10) #tenths of a dB
 	# 			responseCount = responseCount = beam.numberOfSamplesPerBeam
 	# 	responseAverage = responseSum/responseCount
-
 	# 	with open(outFileName, 'w') as f:
 	# 		# write out the backscatter response curve
 	# 		f.write("TakeOffAngle(Deg), BackscatterAmplitude(dB), Sector, SampleSum, SampleCount, Correction, %s \n" % args.inputFile )
