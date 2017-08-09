@@ -250,6 +250,8 @@ class SWATH_BATHYMETRY_PING :
 					datatype = 'H'			#unsigned values
 					if ID == 2:				#ACROSS_TRACK_ARRAY array
 						datatype = 'h'		#unsigned values
+					if ID == 3:				#ACROSS_TRACK_ARRAY array
+						datatype = 'h'		#unsigned values
 					if ID == 5:				#beam angle array
 						datatype = 'h'		#unsigned values
 				elif bytes_per_value == 4:
@@ -612,6 +614,17 @@ def createOutputFileName(path):
 
 	return os.path.join(dir, candidate)
 
+###############################################################################
+class cBeam:
+    def __init__(self, beamDetail, angle):
+        self.sortingDirection       = beamDetail[0]
+        self.detectionInfo          = beamDetail[1]
+        self.numberOfSamplesPerBeam = beamDetail[2]
+        self.centreSampleNumber     = beamDetail[3]
+        self.sector                 = 0
+        self.takeOffAngle           = angle     # used for ARC computation
+        self.sampleSum              = 0         # used for backscatter ARC computation process
+        self.samples                = []
 
 ###############################################################################
 if __name__ == "__main__":

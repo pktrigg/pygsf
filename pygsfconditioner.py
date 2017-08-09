@@ -18,9 +18,9 @@ from glob import glob
 import pygsf
 import struct
 # from bisect import bisect_left, bisect_right
-import sortedcollection
-from operator import itemgetter
-from collections import deque
+# import sortedcollection
+# from operator import itemgetter
+# from collections import deque
 
 ###############################################################################
 def main():
@@ -29,8 +29,9 @@ def main():
 	parser.add_argument('-i', dest='inputFile', action='store', help='Input gsf filename. It can also be a wildcard, e.g. *.gsf')
 	parser.add_argument('-odir', dest='odir', action='store', default="", help='Specify a relative output folder e.g. -odir conditioned')
 	parser.add_argument('-r', action='store_true', default=False, dest='recursive', help='Search recursively from the current folder.  [Default: False]')
-	parser.add_argument('-exclude', dest='exclude', action='store', default="12,22", help='Exclude these records.  Note: this needs to be case sensitive e.g. -exclude 12,22')
 	parser.add_argument('-extractbs', action='store_true', default=False, dest='extractbs', help='Extract backscatter from snippet so we can analyse. [Default: False]')
+	parser.add_argument('-exclude', dest='exclude', action='store', default="", help='Exclude these records.  Note: this needs to be case sensitive e.g. -exclude 12,22')
+	parser.add_argument('-frequency', dest='frequency', action='store', default="", help='process this frquency in Hz. [Default = ""]')
 
 	if len(sys.argv)==1:
 		parser.print_help()
@@ -38,13 +39,17 @@ def main():
 		
 	args = parser.parse_args()
 
-	exclude = list(map(int, args.exclude.split(",")))
 	fileCounter=0
 	matches = []
 	extractBackscatter = False
 	writeConditionedFile = True
 	latitude = 0
 	longitude = 0
+	frequency = 0
+	exclude = []
+
+	if args.frequency:
+		frequency = int(args.frequency)
 
 	if args.recursive:
 		for root, dirnames, filenames in os.walk(os.path.dirname(args.inputFile)):
@@ -63,7 +68,8 @@ def main():
 		print ("Nothing found in %s to condition, quitting" % args.inputFile)
 		exit()
 
-	if len(exclude) > 0:
+	if len(args.exclude) > 0:
+		exclude = list(map(int, args.exclude.split(",")))
 		print ("Excluding datagrams: %s :" % exclude)
 
 	if args.extractbs:
@@ -76,82 +82,99 @@ def main():
 		beamPointingAngles = []
 		transmitSector = []
 
-		outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve.csv")
-		outFileName = createOutputFileName(outFileName)
-
 	for filename in matches:
 		if writeConditionedFile:
-			# create an output file based on the input
-			outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), args.odir, os.path.basename(filename))
-			outFileName  = createOutputFileName(outFileName)
-			outFilePtr = open(outFileName, 'wb')
-			print ("writing to file: %s" % outFileName)
-
-		r = pygsf.GSFREADER(filename)
-		counter = 0
-
-		while r.moreData():
-			# read a datagram.  If we support it, return the datagram type and aclass for that datagram
-			# recordidentifier, datagram = r.readDatagram()
-			numberofbytes, recordidentifier, datagram = r.readDatagram()
-
-			# read the bytes into a buffer 
-			rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
-
-			if extractBackscatter:
-				'''to extract backscatter angular response curve we need to keep a count and sum of gsf samples in a per degree sector'''
-				'''to do this, we need to take into account the take off angle of each beam'''
-				if recordidentifier == 'N':
-					datagram.read()
-					beamPointingAngles = datagram.BeamPointingAngle
-					transmitSector = datagram.TransmitSectorNumber
-				if recordidentifier == 'Y':
-					if len(beamPointingAngles)==0:
-						continue #we dont yet have any raw ranges so we dont have a beam pattern so skip
-					datagram.read()
-					for i in range(len(datagram.beams)):
-						arcIndex = round(beamPointingAngles[i]-startAngle) #quickly find the correct slot for the data
-						ARC[arcIndex].sampleSum = ARC[arcIndex].sampleSum + sum(datagram.beams[i].samples)
-						ARC[arcIndex].numberOfSamplesPerBeam = ARC[arcIndex].numberOfSamplesPerBeam + len(datagram.beams[i].samples)
-						ARC[arcIndex].sector = transmitSector[i]
-				continue
-			
-
-			# the user has opted to skip this datagram, so continue
-			if recordidentifier in exclude:
-				continue
-
-			if writeConditionedFile:
-				outFilePtr.write(rawBytes)
+			createsubsetfile(filename, str(args.odir), exclude)
+		if extractBackscatter:
+			outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve_" + str(frequency) + ".csv")
+			outFileName = createOutputFileName(outFileName)
+			ARC, beamPointingAngles, transmitSector = extractARC(filename, ARC, beamPointingAngles, transmitSector, frequency)
 
 		update_progress("Processed: %s (%d/%d)" % (filename, fileCounter, len(matches)), (fileCounter/len(matches)))
 		fileCounter +=1
-		r.close()
 
-	# print out the extracted backscatter angular response curve
-	# if extractBackscatter:
-	# 	print("Writing backscatter angular response curve to: %s" % outFileName)
-	# 	# compute the mean response across the swath
-	# 	responseSum = 0
-	# 	responseCount = 0
-	# 	for beam in ARC:
-	# 		if beam.numberOfSamplesPerBeam > 0:
-	# 			responseSum = responseSum = (beam.sampleSum/10) #tenths of a dB
-	# 			responseCount = responseCount = beam.numberOfSamplesPerBeam
-	# 	responseAverage = responseSum/responseCount
-	# 	with open(outFileName, 'w') as f:
-	# 		# write out the backscatter response curve
-	# 		f.write("TakeOffAngle(Deg), BackscatterAmplitude(dB), Sector, SampleSum, SampleCount, Correction, %s \n" % args.inputFile )
-	# 		for beam in ARC:
-	# 			if beam.numberOfSamplesPerBeam > 0:
-	# 				beamARC = (beam.sampleSum/beam.numberOfSamplesPerBeam)
-	# 				f.write("%.3f, %.3f, %d, %d, %d, %.3f\n" % (beam.takeOffAngle, beamARC, beam.sector, beam.sampleSum, beam.numberOfSamplesPerBeam , beamARC + responseAverage))
+	if extractBackscatter:
+		saveARC(outFileName, ARC)
 
-	update_progress("Process Complete: ", (fileCounter/len(matches)))
-	if writeConditionedFile:
-		print ("Saving conditioned file to: %s" % outFileName)		
-		outFilePtr.close()
+		update_progress("Process Complete: ", (fileCounter/len(matches)))
 
+###############################################################################
+def saveARC(outFileName, ARC):
+	'''print out the extracted backscatter angular response curve'''
+	print("Writing backscatter angular response curve to: %s" % outFileName)
+	# compute the mean response across the swath
+	responseSum = 0
+	responseCount = 0
+	for beam in ARC:
+		if beam.numberOfSamplesPerBeam > 0:
+			responseSum = responseSum = (beam.sampleSum/10) #tenths of a dB
+			responseCount = responseCount = beam.numberOfSamplesPerBeam
+	responseAverage = responseSum/responseCount
+	with open(outFileName, 'w') as f:
+		# write out the backscatter response curve
+		f.write("TakeOffAngle(Deg), BackscatterAmplitude(dB), Sector, SampleSum, SampleCount, Correction\n")
+		for beam in ARC:
+			if beam.numberOfSamplesPerBeam > 0:
+				beamARC = (beam.sampleSum/beam.numberOfSamplesPerBeam)
+				f.write("%.3f, %.3f, %d, %d, %d, %.3f\n" % (beam.takeOffAngle, beamARC, beam.sector, beam.sampleSum, beam.numberOfSamplesPerBeam , beamARC + responseAverage))
+
+def	createsubsetfile(filename, odir, exclude):
+	# create an output file based on the input
+	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), odir, os.path.splitext(os.path.basename(filename))[0] + "_subset" + os.path.splitext(os.path.basename(filename))[1])
+	outFileName  = createOutputFileName(outFileName)
+	outFilePtr = open(outFileName, 'wb')
+	print ("writing to file: %s" % outFileName)
+
+	r = pygsf.GSFREADER(filename)
+	counter = 0
+
+	while r.moreData():
+		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
+		numberofbytes, recordidentifier, datagram = r.readDatagram()
+		# read the bytes into a buffer 
+		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
+		# the user has opted to skip this datagram, so continue
+		if recordidentifier in exclude:
+			continue
+		outFilePtr.write(rawBytes)
+	r.close()
+	print ("Saving conditioned file to: %s" % outFileName)		
+	outFilePtr.close()
+	return
+
+###############################################################################
+def extractARC(filename, ARC, beamPointingAngles, transmitSector, frequency):
+	r = pygsf.GSFREADER(filename, True)
+	counter = 0
+
+	while r.moreData():
+		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
+		# recordidentifier, datagram = r.readDatagram()
+		numberofbytes, recordidentifier, datagram = r.readDatagram()
+
+		'''to extract backscatter angular response curve we need to keep a count and sum of gsf samples in a per degree sector'''
+		'''to do this, we need to take into account the take off angle of each beam'''
+		if recordidentifier == 2: #SWATH_BATHYMETRY_PING
+			datagram.scalefactors = r.scalefactors	
+			datagram.read()
+
+			if datagram.frequency != frequency:
+			# 	print ("skipping freq: %d" % datagram.frequency)
+				continue
+
+			beamPointingAngles = datagram.BEAM_ANGLE_ARRAY
+			transmitSector = datagram.SECTOR_NUMBER_ARRAY
+
+			for i in range(datagram.numbeams):
+				arcIndex = round(beamPointingAngles[i]- ARC[0].takeOffAngle) # quickly find the correct slot for the data
+				ARC[arcIndex].sampleSum += datagram.INTENSITY_SERIES_ARRAY[i]
+				ARC[arcIndex].numberOfSamplesPerBeam += 1
+				ARC[arcIndex].sector = transmitSector[i]
+		continue
+
+	return ARC, beamPointingAngles, transmitSector
+
+###############################################################################
 
 ###############################################################################
 def from_timestamp(unixtime):
