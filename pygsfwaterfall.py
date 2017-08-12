@@ -28,6 +28,7 @@ def main():
 	parser.add_argument('-frequency', dest='frequency', action='store', default="", help='process this frquency in Hz. [Default = ""]')
 	parser.add_argument('-i', dest='inputFile', action='store', help='-i <ALLfilename> : input ALL filename to image. It can also be a wildcard, e.g. *.gsf')
 	parser.add_argument('-invert', dest='invert', default = False, action='store_true', help='-invert : Inverts the color palette')
+	parser.add_argument('-odir', dest='odir', action='store', default="", help='Specify a relative output folder e.g. -odir conditioned')
 	parser.add_argument('-r', action='store_true', default=False, dest='rotate', help='-r : Rotate the resulting waterfall so the image reads from left to right instead of bottom to top.  [Default is bottom to top]')
 	parser.add_argument('-z', dest='zoom', default = 0, action='store', help='-z <value> : Zoom scale factor. A larger number makes a larger image, and a smaller number (0.5) provides a smaller image, e.g -z 2 makes an image twice the native resolution. [Default: 0]')
 
@@ -60,9 +61,9 @@ def main():
 			while (bc < 300):
 				zoom *= 2
 				bc *= zoom 
-		createWaterfall(filename, args.color, beamCount, zoom, float(args.clip), args.invert, float(args.frequency), args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), args.invert, float(args.frequency), args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation)
 
-def createWaterfall(filename, colorScale, beamCount, zoom=1.0, clip=0, invert=True, frequency=100000, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
+def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, invert=True, frequency=100000, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
 	print ("Processing file: ", filename)
 
 	start_time = time.time() # time the process
@@ -99,8 +100,8 @@ def createWaterfall(filename, colorScale, beamCount, zoom=1.0, clip=0, invert=Tr
 			xp = np.array(datagram.ACROSS_TRACK_ARRAY) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
 			# datagram.Reflectivity.reverse()
 
-			fp = np.abs(np.array(datagram.MEAN_REL_AMPLITUDE_ARRAY)) #the Backscatter list as a numpy array
-			# fp = np.abs(np.array(datagram.SNIPPET_SERIES_ARRAY)) #the Backscatter list as a numpy array
+			# fp = np.abs(np.array(datagram.MEAN_REL_AMPLITUDE_ARRAY)) #the Backscatter list as a numpy array
+			fp = np.abs(np.array(datagram.SNIPPET_SERIES_ARRAY)) #the Backscatter list as a numpy array
 
 			# fp = geodetic.medfilt(fp,31)
 			x = np.linspace(leftExtent, rightExtent, outputResolution) #the required samples needs to be about the same as the original number of samples, spread across the across track range
@@ -152,7 +153,10 @@ def createWaterfall(filename, colorScale, beamCount, zoom=1.0, clip=0, invert=Tr
 
 	if rotate:
 		img = img.rotate(-90, expand=True)
-	img.save(os.path.splitext(filename)[0]+'.png')
+
+	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename[0])), odir, os.path.splitext(filename)[0] + "_Waterfall_" + str(frequency) + ".png")
+	# img.save(os.path.splitext(filename)[0]+'.png')
+	img.save(outFileName)
 	print ("Saved to: ", os.path.splitext(filename)[0]+'.png')
 
 ##################################################################################################################

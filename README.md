@@ -8,6 +8,8 @@ This is going to use the standard libraries from python, ie NOT use numpy, gsgli
 * make a las file of RGB where each color is an intensity
 
 # DONE
+* snippets is now available in 2 forms: detect value or mean of all samples in beam.
+* fixed bug in conditioner where extraction routine was using intensity array instead of mean_rel_array
 * iterate and see how often settings change.  We can do this by writing settings changes to shp or csv file.
 * need to make Angular Response Curves for each frequency
 * implemented R2Sonic backscatter adjustment as provided in F77 from Norm Campbell at CSIRO.

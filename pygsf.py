@@ -454,8 +454,13 @@ class SWATH_BATHYMETRY_PING :
 				values.append((d / scale) + offset)
 
 			# populate the array with the mean of all samples	 
+			# if len(raw) > 0:
+			# 	snippets.append((sum(raw) / float(len(raw) / scale) + offset))
+			# else:
+			# 	snippets.append(0)
+
 			if len(raw) > 0:
-				snippets.append(sum(raw) / float(len(raw)))
+				snippets.append(max(raw) / scale + offset)
 			else:
 				snippets.append(0)
 
@@ -606,7 +611,7 @@ class SWATH_BATHYMETRY_PING :
 		''' 
 		read the imagery information for the r2sonic 2024
 		'''
-		fmt = '>12s12slll lllll lllll lllll lllhh lllll l32s'
+		fmt = '>12s12slll lllll llllhh lllll lllhh lllll l32s'
 		l = struct.calcsize(fmt)
 		rec_unpack = struct.Struct(fmt).unpack
 		data = self.fileptr.read(l) 
@@ -630,27 +635,28 @@ class SWATH_BATHYMETRY_PING :
 		transmitsteeringvertical = raw[12] / 1.0e6
 		transmitsteeringhorizontal = raw[13] / 1.0e6
 		transmitinfo = raw[14]
-		receiverbandwidth = raw[15] / 1.0e4
-		receiversamplerate = raw[16] / 1.0e3
+		self.vtxoffset = raw[15]
+		receiverbandwidth = raw[16] / 1.0e4
+		receiversamplerate = raw[17] / 1.0e3
 		
-		receiverrange = raw[17] / 1.0e5
-		self.receivergain = raw[18] / 1.0e2
-		self.receiverspreadingloss = raw[19] / 1.0e3
-		self.absorptioncoefficient = raw[20]/ 1.0e3
-		mounttiltangle = raw[21] / 1.0e6
+		receiverrange = raw[18] / 1.0e5
+		self.receivergain = raw[19] / 1.0e2
+		self.receiverspreadingloss = raw[20] / 1.0e3
+		self.absorptioncoefficient = raw[21]/ 1.0e3
+		mounttiltangle = raw[22] / 1.0e6
 
-		receiverinfo = raw[22]
-		reserved = raw[23]
-		numbeams = raw[24]
+		receiverinfo = raw[23]
+		reserved = raw[24]
+		numbeams = raw[25]
 
-		moreinfo1 = raw[25] / 1.0e6
-		moreinfo2 = raw[26] / 1.0e6
-		moreinfo3 = raw[27] / 1.0e6
-		moreinfo4 = raw[28] / 1.0e6
-		moreinfo5 = raw[29] / 1.0e6
-		moreinfo6 = raw[30] / 1.0e6
+		moreinfo1 = raw[26] / 1.0e6
+		moreinfo2 = raw[27] / 1.0e6
+		moreinfo3 = raw[28] / 1.0e6
+		moreinfo4 = raw[29] / 1.0e6
+		moreinfo5 = raw[30] / 1.0e6
+		moreinfo6 = raw[31] / 1.0e6
 
-		spare = raw[31]
+		spare = raw[32]
 		return		
 
 	def readarray(self, values, scale, offset, datatype):

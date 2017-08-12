@@ -216,20 +216,20 @@ def extractARC(filename, ARC, beamPointingAngles, transmitSector, frequency):
 			H0_TxPulseWidth = datagram.pulsewidth
 			H0_RxSpreading = datagram.receiverspreadingloss
 			H0_RxGain = datagram.receivergain
-			H0_VTX_Offset = -21.0 / 100 #????  Ask Norm
+			H0_VTX_Offset = datagram.vtxoffset / 100  # -21.0 / 100 #????  Ask Norm
 
 			for i in range(datagram.numbeams):
 				S1_angle = beamPointingAngles[i] #angle in degrees
 				S1_twtt = datagram.TRAVEL_TIME_ARRAY[i]
 				S1_range = math.sqrt((datagram.ACROSS_TRACK_ARRAY[i] ** 2) + (datagram.ALONG_TRACK_ARRAY[i] ** 2))
-				S1_uPa = datagram.INTENSITY_SERIES_ARRAY[i]
+				S1_uPa = max(0.01, datagram.MEAN_REL_AMPLITUDE_ARRAY[i]) #trap impossible values
 
 				adjusted = datagram.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
-				datagram.INTENSITY_SERIES_ARRAY[i] = adjusted
+				datagram.MEAN_REL_AMPLITUDE_ARRAY[i] = adjusted
 				
 			for i in range(datagram.numbeams):
 				arcIndex = round(beamPointingAngles[i]- ARC[0].takeOffAngle) # efficiently find the correct slot for the data
-				ARC[arcIndex].sampleSum += datagram.INTENSITY_SERIES_ARRAY[i]
+				ARC[arcIndex].sampleSum += datagram.MEAN_REL_AMPLITUDE_ARRAY[i]
 				ARC[arcIndex].numberOfSamplesPerBeam += 1
 				ARC[arcIndex].sector = transmitSector[i]
 		continue
