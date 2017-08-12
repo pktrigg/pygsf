@@ -10,6 +10,7 @@ import sys
 import time
 import os
 import fnmatch
+import math
 from argparse import ArgumentParser
 from argparse import RawTextHelpFormatter
 from datetime import datetime
@@ -45,6 +46,7 @@ def main():
 	matches = []
 	extractBackscatter = False
 	writeConditionedFile = True
+	dump = False
 	latitude = 0
 	longitude = 0
 	frequency = 0
@@ -206,6 +208,25 @@ def extractARC(filename, ARC, beamPointingAngles, transmitSector, frequency):
 			beamPointingAngles = datagram.BEAM_ANGLE_ARRAY
 			transmitSector = datagram.SECTOR_NUMBER_ARRAY
 
+			H0_TxPower = datagram.transmitsourcelevel
+			H0_SoundSpeed = datagram.soundspeed
+			H0_RxAbsorption = datagram.absorptioncoefficient
+			H0_TxBeamWidthVert = math.radians(datagram.beamwidthvertical)
+			H0_TxBeamWidthHoriz = math.radians(datagram.beamwidthhorizontal)
+			H0_TxPulseWidth = datagram.pulsewidth
+			H0_RxSpreading = datagram.receiverspreadingloss
+			H0_RxGain = datagram.receivergain
+			H0_VTX_Offset = -21.0 / 100 #????  Ask Norm
+
+			for i in range(datagram.numbeams):
+				S1_angle = beamPointingAngles[i] #angle in degrees
+				S1_twtt = datagram.TRAVEL_TIME_ARRAY[i]
+				S1_range = math.sqrt((datagram.ACROSS_TRACK_ARRAY[i] ** 2) + (datagram.ALONG_TRACK_ARRAY[i] ** 2))
+				S1_uPa = datagram.INTENSITY_SERIES_ARRAY[i]
+
+				adjusted = datagram.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
+				datagram.INTENSITY_SERIES_ARRAY[i] = adjusted
+				
 			for i in range(datagram.numbeams):
 				arcIndex = round(beamPointingAngles[i]- ARC[0].takeOffAngle) # efficiently find the correct slot for the data
 				ARC[arcIndex].sampleSum += datagram.INTENSITY_SERIES_ARRAY[i]

@@ -17,10 +17,11 @@
 				"WaitOnNormalExit",
 				"RedirectOutput"
 			],
-					"args": ["-i", "C:/development/python/sample_subset.gsf", "-dump"\
+					"args": ["-i", "C:/development/python/sample_subset.gsf"\
 		},
 	]
 }
+					"args": ["-i", "C:/development/python/sample_subset.gsf", "-extractbs", "-frequency", "100000"\
 					"args": ["-i", "F:/Projects/multispectral/Bedford Basin-2 Data Sets/20160331 - Bedford Basin/GSF/20160331 - 125110 - 0001-2026_1.gsf", "-extractbs", "-frequency", "100000"\
 					"args": ["-i", "F:/Projects/multispectral/20161130 - Patricia Bay/GSF/20161129-2148 - 0001-2026_1.gsf"\
 
