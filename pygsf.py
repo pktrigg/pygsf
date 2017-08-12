@@ -62,7 +62,7 @@ def testreader():
 
 		if recordidentifier == SWATH_BATHYMETRY:
 			datagram.read()
-			# print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency))
+			print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d Serial %d" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency, datagram.serialnumber))
 			pingcount += 1
 	print("Duration %.3fs" % (time.time() - start_time )) # time the process
 	print ("PingCount:", pingcount)
@@ -151,6 +151,13 @@ class SWATH_BATHYMETRY_PING :
 		self.HORIZONTAL_ERROR_ARRAY = []
 		self.SECTOR_NUMBER_ARRAY = []
 		self.INTENSITY_SERIES_ARRAY = []
+
+
+	def __str__(self):
+		'''
+		pretty print this class
+		'''
+		return pprint.pformat(vars(self))
 
 	def read(self, headeronly=False):
 		self.fileptr.seek(self.offset + self.hdrlen, 0)   # move the file pointer to the start of the record so we can read from disc              
@@ -340,7 +347,7 @@ class SWATH_BATHYMETRY_PING :
 		raw = rec_unpack(data)
 		
 		self.modelnumber = raw[0]
-		self.serialnumber = raw[1]
+		self.serialnumber = raw[1].decode('utf-8').rstrip('\x00')
 
 		self.pingtime = raw[2]
 		self.pingnanotime = raw[3]

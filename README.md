@@ -10,6 +10,7 @@ This is going to use the standard libraries from python, ie NOT use numpy, gsgli
 * iterate and see how often settings change.  We can do this by writing settings changes to shp or csv file.
 
 # DONE
+* added option to specify output.  very useful when extracting backscatter ARC's
 * conditioner now has dedicated function per functionality
 * write out to a shape file so we can see where each file exists
 * waterfall image creation done for each frequency
