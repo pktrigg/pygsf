@@ -4,12 +4,13 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
-* need to make Angular Response Curves for each frequency
 * make a las file for each frequency where intensity is the amplitude data
 * make a las file of RGB where each color is an intensity
-* iterate and see how often settings change.  We can do this by writing settings changes to shp or csv file.
 
 # DONE
+* iterate and see how often settings change.  We can do this by writing settings changes to shp or csv file.
+* need to make Angular Response Curves for each frequency
+* implemented R2Sonic backscatter adjustment as provided in F77 from Norm Campbell at CSIRO.
 * added option to specify output.  very useful when extracting backscatter ARC's
 * conditioner now has dedicated function per functionality
 * write out to a shape file so we can see where each file exists

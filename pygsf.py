@@ -19,9 +19,9 @@ from datetime import timedelta
 
 #/* The high order 4 bits are used to define the field size for this array */
 GSF_FIELD_SIZE_DEFAULT  = 0x00  #/* Default values for field size are used used for all beam arrays */
-GSF_FIELD_SIZE_ONE      = 0x10  #/* value saved as a one byte value after applying scale and offset */
-GSF_FIELD_SIZE_TWO      = 0x20  #/* value saved as a two byte value after applying scale and offset */
-GSF_FIELD_SIZE_FOUR     = 0x40  #/* value saved as a four byte value after applying scale and offset */
+GSF_FIELD_SIZE_ONE	  = 0x10  #/* value saved as a one byte value after applying scale and offset */
+GSF_FIELD_SIZE_TWO	  = 0x20  #/* value saved as a two byte value after applying scale and offset */
+GSF_FIELD_SIZE_FOUR	 = 0x40  #/* value saved as a four byte value after applying scale and offset */
 GSF_MAX_PING_ARRAY_SUBRECORDS = 26
 
 # Record Decriptions (See page 82)
@@ -40,9 +40,304 @@ ATTITUDE								= 12
 
 ###############################################################################
 def main():
+
+	testR2SonicAdjustment()
 	testreader()
 	# conditioner()
 
+###############################################################################
+def testR2SonicAdjustment():
+	'''
+	This test code confirms the results are in alignment with those from Norm Campbell at CSIRO who kindly provided the code in F77
+	'''
+	# adjusted backscatter          -38.6
+	# adjusted backscatter          -47.6
+	# adjusted backscatter          -27.5
+	# adjusted backscatter          -36.6
+	# adjusted backscatter          -35.5
+
+	S1_angle = -58.0
+	S1_twtt = 0.20588
+	S1_range = 164.8
+	H0_TxPower = 197.0
+	H0_SoundSpeed = 1468.59
+	H0_RxAbsorption = 80.0
+	H0_TxBeamWidthVert = 0.0174533
+	H0_TxBeamWidthHoriz = 0.0087266
+	H0_TxPulseWidth = 0.000275
+	H0_RxSpreading = 35.0
+	H0_RxGain = 8.0
+	H0_VTX_Offset = -21.0 / 100.
+
+	n_snpt_val = 470
+	S1_uPa = n_snpt_val
+	z_snpt_BS_dB = 20. * math.log10(S1_uPa)
+
+	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+	print (adjusted)
+
+	S1_angle = -58.0
+	S1_twtt = 0.20588
+	S1_range = 164.8
+	H0_TxPower = 206.0
+	H0_SoundSpeed = 1468.59
+	H0_RxAbsorption = 80.0
+	H0_TxBeamWidthVert = 0.0174533
+	H0_TxBeamWidthHoriz = 0.0087266
+	H0_TxPulseWidth = 0.000275
+	H0_RxSpreading = 35.0
+	H0_RxGain = 8.0
+	H0_VTX_Offset = -21.0 / 100.
+
+	n_snpt_val = 470
+	S1_uPa = n_snpt_val
+	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+	print (adjusted)
+
+	S1_angle = - 58.0
+	S1_twtt = 0.20588
+	S1_range = 164.8
+	H0_TxPower = 197.0
+	H0_SoundSpeed = 1468.59
+	H0_RxAbsorption = 80.0
+	H0_TxBeamWidthVert = 0.0174533
+	H0_TxBeamWidthHoriz = 0.0087266
+	H0_TxPulseWidth = 0.000275
+	H0_RxSpreading = 30.0
+	H0_RxGain = 8.0
+	H0_VTX_Offset = -21.0 / 100.
+
+	n_snpt_val = 470
+	S1_uPa = n_snpt_val
+	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+	print (adjusted)
+
+	S1_angle = - 58.0
+	S1_twtt = 0.20588
+	S1_range = 164.8
+	H0_TxPower = 197.0
+	H0_SoundSpeed = 1468.59
+	H0_RxAbsorption = 80.0
+	H0_TxBeamWidthVert = 0.0174533
+	H0_TxBeamWidthHoriz = 0.0087266
+	H0_TxPulseWidth = 0.000275
+	H0_RxSpreading = 35.0
+	H0_RxGain = 6.0
+	H0_VTX_Offset = -21.0 / 100.
+
+	n_snpt_val = 470
+	S1_uPa = n_snpt_val
+	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+	print (adjusted)
+
+
+	S1_angle = - 58.0
+	S1_twtt = 0.20588
+	S1_range = 164.8
+	H0_TxPower = 207.0
+	H0_SoundSpeed = 1468.59
+	H0_RxAbsorption = 80.0
+	H0_TxBeamWidthVert = 0.0174533
+	H0_TxBeamWidthHoriz = 0.0087266
+	H0_TxPulseWidth = 0.000275
+	H0_RxSpreading = 30.0
+	H0_RxGain = 6.0
+	H0_VTX_Offset = -21.0 / 100.
+
+	n_snpt_val = 470
+	S1_uPa = n_snpt_val
+	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+	print (adjusted)
+
+	return
+
+
+###############################################################################
+def R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_Magnitude, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, backscatter_dBm):
+
+	iot = 7
+	# write (iot,'(/ ''					   angle '', f14.1 )' )
+	print("angle", S1_angle)
+
+	one_rad = 57.29577951308232
+
+	S1_angle_rad = S1_angle / one_rad
+
+# c	   the following code uses the names for the various packets as listed in the R2Sonic SONIC 2024 Operation Manual v6.0
+# c	   so names beginning with
+# c	   H0_   denote parameters from the BATHY (BTH) and Snippet (SNI) packets from section H0
+# c	   R0_   denote parameters from the BATHY (BTH) packets from section R0
+# c	   S1_   denote parameters from the Snippet (SNI) packets from section S1
+# c	   names beginning with
+# c	   z_	denote values derived from the packet parameters
+# c	   the range, z_range_m, can be found from the two-way travel time (and scaling factor), and the sound speed, as follows:
+
+	z_one_way_travel_secs = S1_twtt / 2.0
+
+	# write (iot,'( ''			  one-way travel '', f14.1 )' )
+	print("one-way travel", z_one_way_travel_secs)
+
+	z_range_m = z_one_way_travel_secs * H0_SoundSpeed
+
+	# write (iot,'( ''					   range '', f14.1 )' )
+	print("range", z_range_m)
+
+	z_range_m = S1_range
+
+	# write (iot,'( ''					   range '', f14.1 )' )
+	print("range", z_range_m)
+
+# c	   according to Lurton, Augustin and Le Bouffant (Femme 2011), the basic Sonar equation is
+# c	   received_level = source_level
+# c					  - 2 * transmission_loss
+# c					  + target_strength
+# c					  + receiver_gain
+# c	   note that this last term does not always appear explicitly in the sonar equation
+# c	   more specifically:
+# c	   transmission_loss = H0_RxAbsorption * range_m + 40 log10 ( range_m )
+# c	   target_strength = backscatter_dB_m + 10 log10 ( z_area_of_insonification )
+# c	   receiver_gain = TVG + H0_RxGain
+# c	   the components of the Sonar equation can be calculated as follows:
+# c	   u16 S1_Magnitude[S1_Samples]; // [micropascals] = S1_Magnitude[n]
+ 
+	#  write (iot,'( ''			  received level '', f14.1 )' )
+	print("received level", S1_Magnitude)
+
+	z_received_level = 20.0 * math.log10 ( S1_Magnitude )
+
+	# write (iot,'( ''	 20 log10 received level '', f14.1 )' )
+	print("20 log10 received level", z_received_level)
+
+
+# c	   f32 H0_TxPower; // [dB re 1 uPa at 1 meter]
+
+	z_source_level = H0_TxPower
+
+	#   write (iot,'( ''				source level '', f14.1 )' )
+	print("source level", z_source_level)
+
+# c	   f32 H0_RxAbsorption; // [dB per kilometer]
+
+	z_transmission_loss_t1 = 2.0 * H0_RxAbsorption * z_range_m / 1000.0
+
+	z_transmission_loss_t2 = 40.0 * math.log10 ( z_range_m )
+
+	z_transmission_loss = z_transmission_loss_t1 + z_transmission_loss_t2
+   
+	#   write (iot,'( ''		transmission loss t1 '', f14.1 )' )
+	print("transmission loss t1", z_transmission_loss_t1)
+
+	#   write (iot,'( ''		transmission loss t2 '', f14.1 )' )
+	print("transmission loss t2", z_transmission_loss_t2)
+
+	#   write (iot,'( ''		transmission loss	'', f14.1 )' )
+	print("transmission loss", z_transmission_loss)
+
+
+# c	   for oblique angles
+# c	   area_of_insonification = along_track_beam_width * range * sound_speed * pulse_width / 2 sin ( incidence_angle)
+# c	   for normal incidence
+# c	   area_of_insonification = along_track_beam_width * across_track_beam_width * range ** 2
+
+	sin_S1_angle = math.sin ( abs ( S1_angle_rad ) )
+# c	 if ( abs ( S1_angle ) < 30.001 ) then
+		
+	z_area_of_insonification_nml = H0_TxBeamWidthVert * H0_TxBeamWidthHoriz * z_range_m **2 
+
+	z_area_of_insonification_obl = z_area_of_insonification_nml
+	
+	if ( abs ( S1_angle ) >= 0.001 ):
+		z_area_of_insonification_obl = H0_TxBeamWidthVert * z_range_m * H0_SoundSpeed * H0_TxPulseWidth / ( 2.0 * sin_S1_angle )
+		# c	   f32 H0_TxBeamwidthVert; // [radians]
+		# c	   f32 H0_TxBeamwidthHoriz; // [radians]
+
+	#   write (iot,'( ''  area of insonification nml '', f14.1 )' )
+	print("area of insonification", z_area_of_insonification_nml)
+
+	#   write (iot,'( ''  area of insonification obl '', f14.1 )' )
+	print("area of insonification obl", z_area_of_insonification_obl)
+
+	if ( abs ( S1_angle ) < 25. ):
+		z_area_of_insonification = z_area_of_insonification_nml
+	else:
+		z_area_of_insonification = z_area_of_insonification_obl
+
+	if ( abs ( S1_angle ) < 0.001 ):
+		z_area_of_insonification = z_area_of_insonification_nml
+	elif ( z_area_of_insonification_nml < z_area_of_insonification_obl ):
+		z_area_of_insonification = z_area_of_insonification_nml
+	else:
+		z_area_of_insonification = z_area_of_insonification_obl
+
+	z_area_inson = 10. * math.log10 ( z_area_of_insonification )
+
+	#   write (iot,'( ''	  10 log10 area of inson '', f14.1 )' )
+	print("10 long10 area of inson", z_area_inson)
+
+
+# c	   note that the first equation refers to the along-track beam width
+# c	   the R2Sonic Operation Manual refers on p21 to the Beamwidth - Along Track -- moreover, for the 2024, the Beamwidth Along Track is twice
+# c	   the Beamwidth Across Track
+# c	   for the observed values on the BTH datagrams, the values given are 
+# c	   H0_TxBeamWidthVert = 0.0174533, and H0_TxBeamWidthHoriz = 0.0087266,
+# c	   so I have taken H0_TxBeamWidthVert to be equivalent to the along_track_beam_width
+# c	   according to the R2Sonic Operation Manual in Section 5.6.3 on p66, the TVG equation is
+# c	   2 * range_m / 1000 * H0_RxAbsorption + H0_RxSpreading * log10 ( range_m ) + H0_RxGain
+# c	   f32 H0_RxSpreading; // [dB (times log range in meters)]
+# c	   f32 H0_RxAbsorption; // [dB per kilometer]
+# c	   z_transmission_loss_t1 =  2. * H0_RxAbsorption * z_range_m / 1000.
+# c	   z_transmission_loss_t2 = 40. * alog10 ( z_range_m )
+
+	z_receiver_gain_t1 = 2. * H0_RxAbsorption * z_range_m / 1000.
+	z_receiver_gain_t2 = H0_RxSpreading * math.log10 ( z_range_m )
+
+# c	   f32 H0_RxGain; // [multiply by two for relative dB]
+
+	z_receiver_gain_t3 = 2. * H0_RxGain
+	z_receiver_gain_t3 = H0_RxGain
+
+	z_receiver_gain = z_receiver_gain_t1 + z_receiver_gain_t2 + z_receiver_gain_t3 #- 100.0
+
+	#   write (iot,'( ''			receiver gain t1 '', f14.1 )' )
+	print("receiver gain t1", z_receiver_gain_t1)
+
+	#   write (iot,'( ''			receiver gain t2 '', f14.1 )' )
+	print("receiver gain t2", z_receiver_gain_t2)
+	 
+	#   write (iot,'( ''			receiver gain t3 '', f14.1 )' )
+	print("receiver gain t3", z_receiver_gain_t3)
+	 
+	#   write (iot,'( ''			   receiver gain '', f14.1 )' )
+	print("receiver gain", z_receiver_gain)
+	 
+	backscatter_dB_m = z_received_level - z_source_level + z_transmission_loss - 10. * math.log10 ( z_area_of_insonification ) - z_receiver_gain - H0_VTX_Offset + 100.0
+
+	#   write (iot,'(/ ''		adjusted backscatter '', f14.1 )' )
+	print("adjusted backscatter", backscatter_dB_m)
+
+	print ()
+	#   write ( iot, '(/ ''	rec_L	srce_L'',
+	#  1				 ''  inson_A'',
+	#  2				 ''	 TL'',
+	#  3				 ''		RG	 VTX_off'',
+	#  5				 ''	BS_adj '' )' )
+
+	#   write ( iot, '(/ f9.2, f10.2,
+	#  1				 f8.2,
+	#  1				 7f10.2 )')
+	#  2				 z_received_level, - z_source_level,
+	#  3				 - 10. * alog10 ( z_area_of_insonification ),
+	#  2				 z_transmission_loss,
+	#  4				 - z_receiver_gain,
+	#  5				 - H0_VTX_Offset,
+	#  5				 backscatter_dB_m,
+	return backscatter_dB_m
+
+###############################################################################
 def testreader():
 	'''
 	sample read script so we can see how to use the code
@@ -124,8 +419,8 @@ class UNKNOWN_RECORD:
 
 class SCALEFACTOR:
 	def __init__(self):
-		self.subrecordID = 0    
-		self.compressionFlag = 0    #/* Specifies bytes of storage in high order nibble and type of compression in low order nibble */
+		self.subrecordID = 0	
+		self.compressionFlag = 0	#/* Specifies bytes of storage in high order nibble and type of compression in low order nibble */
 		self.multiplier = 0.0
 		self.offset = 0
 	
@@ -160,14 +455,14 @@ class SWATH_BATHYMETRY_PING :
 		return pprint.pformat(vars(self))
 
 	def read(self, headeronly=False):
-		self.fileptr.seek(self.offset + self.hdrlen, 0)   # move the file pointer to the start of the record so we can read from disc              
+		self.fileptr.seek(self.offset + self.hdrlen, 0)   # move the file pointer to the start of the record so we can read from disc			  
 
 		# read ping header
 		hdrfmt = '>llll5hlH3h2Hlllh'
 		hdrlen = struct.calcsize(hdrfmt)
 		rec_unpack = struct.Struct(hdrfmt).unpack
 
-		self.fileptr.seek(self.offset + self.hdrlen , 0)   # move the file pointer to the start of the record so we can read from disc              
+		self.fileptr.seek(self.offset + self.hdrlen , 0)   # move the file pointer to the start of the record so we can read from disc			  
 		data = self.fileptr.read(hdrlen)
 		s = rec_unpack(data)
 		self.time 			= s[0] 
@@ -336,6 +631,8 @@ class SWATH_BATHYMETRY_PING :
 				values.append((d / scale) + offset)
 		return values
 
+###############################################################################
+###############################################################################
 	def decodeR2SonicImagerySpecific(self):
 		''' 
 		read the imagery information for the r2sonic 2024
@@ -425,7 +722,7 @@ class GSFHEADER:
 		rec_len = struct.calcsize(rec_fmt)
 		rec_unpack = struct.Struct(rec_fmt).unpack
 
-		self.fileptr.seek(self.offset + self.hdrlen, 0)	# move the file pointer to the start of the record so we can read from disc              
+		self.fileptr.seek(self.offset + self.hdrlen, 0)	# move the file pointer to the start of the record so we can read from disc			  
 		data = self.fileptr.read(rec_len)
 		bytesRead = rec_len
 		s = rec_unpack(data)
@@ -479,7 +776,7 @@ class GSFREADER:
 	def readDatagramBytes(self, offset, byteCount):
 		'''read the entire raw bytes for the datagram without changing the file pointer.  this is used for file conditioning'''
 		curr = self.fileptr.tell()
-		self.fileptr.seek(offset, 0)   # move the file pointer to the start of the record so we can read from disc              
+		self.fileptr.seek(offset, 0)   # move the file pointer to the start of the record so we can read from disc			  
 		data = self.fileptr.read(byteCount)
 		self.fileptr.seek(curr, 0)
 		return data
@@ -623,15 +920,15 @@ def createOutputFileName(path):
 
 ###############################################################################
 class cBeam:
-    def __init__(self, beamDetail, angle):
-        self.sortingDirection       = beamDetail[0]
-        self.detectionInfo          = beamDetail[1]
-        self.numberOfSamplesPerBeam = beamDetail[2]
-        self.centreSampleNumber     = beamDetail[3]
-        self.sector                 = 0
-        self.takeOffAngle           = angle     # used for ARC computation
-        self.sampleSum              = 0         # used for backscatter ARC computation process
-        self.samples                = []
+	def __init__(self, beamDetail, angle):
+		self.sortingDirection	   = beamDetail[0]
+		self.detectionInfo		  = beamDetail[1]
+		self.numberOfSamplesPerBeam = beamDetail[2]
+		self.centreSampleNumber	 = beamDetail[3]
+		self.sector				 = 0
+		self.takeOffAngle		   = angle	 # used for ARC computation
+		self.sampleSum			  = 0		 # used for backscatter ARC computation process
+		self.samples				= []
 
 ###############################################################################
 if __name__ == "__main__":
