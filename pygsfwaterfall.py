@@ -8,7 +8,7 @@ from datetime import datetime
 import geodetic
 from glob import glob
 import math
-# from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 from matplotlib import cm
 import numpy as np
 from PIL import Image,ImageDraw,ImageFont, ImageOps, ImageChops
@@ -23,9 +23,8 @@ warnings.filterwarnings('ignore')
 def main():
 	parser = argparse.ArgumentParser(description='Read GSF file and create a reflectivity image.')
 	parser.add_argument('-a', action='store_true', default=False, dest='annotate', help='-a : Annotate the image with timestamps.  [Default: True]')
-	parser.add_argument('-clip', dest='clip', default = 5, action='store', help='-clip <value> : Clip the minimum and maximum edges of the data by this percentage so the color stretch better represents the data.  [Default - 5.  A good value is -clip 5.]')
-	parser.add_argument('-color', dest='color', default = 'graylog', action='store', help='-color <paletteName> : Specify the color palette.  Options are : -color yellow_brown_log, -color gray, -color yellow_brown or any of the palette filenames in the script folder. [Default = graylog for a grayscale logarithmic palette.]' )
-	parser.add_argument('-frequency', dest='frequency', action='store', default="", help='process this frquency in Hz. [Default = ""]')
+	parser.add_argument('-clip', dest='clip', default = 1, action='store', help='-clip <value> : Clip the minimum and maximum edges of the data by this percentage so the color stretch better represents the data.  [Default - 5.  A good value is -clip 1.]')
+	parser.add_argument('-color', dest='color', default = 'gray', action='store', help='-color <paletteName> : Specify the color palette.  Options are : -color yellow_brown_log, -color gray, -color yellow_brown or any of the palette filenames in the script folder. [Default = gray.]' )
 	parser.add_argument('-i', dest='inputFile', action='store', help='-i <ALLfilename> : input ALL filename to image. It can also be a wildcard, e.g. *.gsf')
 	parser.add_argument('-invert', dest='invert', default = False, action='store_true', help='-invert : Inverts the color palette')
 	parser.add_argument('-odir', dest='odir', action='store', default="", help='Specify a relative output folder e.g. -odir conditioned')
@@ -47,9 +46,16 @@ def main():
 			print ("file not found:", filename)
 			exit()
 
-		xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
-		print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
-
+		# xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
+		# print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
+		# pkpk
+		beamCount = 512
+		xResolution = 0.4
+		yResolution = 0.27
+		leftExtent = -62.22
+		rightExtent = 59.23
+		distanceTravelled = 488.05
+		navigation = []
 		if beamCount == 0:
 			print ("No data to process, skipping empty file")
 			continue
@@ -61,62 +67,84 @@ def main():
 			while (bc < 300):
 				zoom *= 2
 				bc *= zoom 
-		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), args.invert, float(args.frequency), args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), args.invert, args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation)
 
-def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, invert=True, frequency=100000, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
+def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
 	print ("Processing file: ", filename)
 
 	start_time = time.time() # time the process
 	recCount = 0
-	waterfall = []
+	waterfall100 = []
+	waterfall200 = []
+	waterfall400 = []
 	minBS = 9999.0
 	maxBS = -minBS
 	outputResolution = beamCount * zoom
-	isoStretchFactor = (yResolution/xResolution) * zoom
-	print ("xRes %.2f yRes %.2f isoStretchFactor %.2f" % (xResolution, yResolution, isoStretchFactor))
+	counter = 0
 
 	r = pygsf.GSFREADER(filename)
 	scalefactors = r.loadscalefactors()
 	totalrecords = r.getrecordcount()
+	perBeam = True
 
 	while r.moreData():
 		numberofbytes, recordidentifier, datagram = r.readDatagram()
 		if recordidentifier == 2: #SWATH_BATHYMETRY_PING
 			datagram.scalefactors = scalefactors	
+			datagram.snippettype = pygsf.SNIPPET_NONE
 			datagram.read()
 
-			if datagram.frequency != frequency:
-			# 	print ("skipping freq: %d" % datagram.frequency)
-				continue
-			# we need to remember the actual data extents so we can set the color palette mappings to the same limits. 
-			minBS = min(minBS, min(datagram.MEAN_REL_AMPLITUDE_ARRAY))
-			maxBS = max(maxBS, max(datagram.MEAN_REL_AMPLITUDE_ARRAY))
-
-			# print ("MinBS %.3f MaxBS %.3f" % (minBS, maxBS))
-			# waterfall.insert(0, np.abs( np.asarray(datagram.Reflectivity)))			
+			samplearray = datagram.R2Soniccorrection(perBeam)
+			idx = pygsf.ARCIdx[datagram.frequency]
 
 			# we need to stretch the data to make it isometric, so lets use numpy interp routing to do that for Us
-			# datagram.AcrossTrackDistance = datagram.AcrossTrackDistance.reverse()
-			xp = np.array(datagram.ACROSS_TRACK_ARRAY) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
-			# datagram.Reflectivity.reverse()
+								# raw2 = [20.0 * math.log10(s / scale + offset) for s in raw]
 
-			# fp = np.abs(np.array(datagram.MEAN_REL_AMPLITUDE_ARRAY)) #the Backscatter list as a numpy array
-			fp = np.abs(np.array(datagram.SNIPPET_SERIES_ARRAY)) #the Backscatter list as a numpy array
-
-			# fp = geodetic.medfilt(fp,31)
+			# datagram.ACROSS_TRACK_ARRAY = [s for s in datagram.ACROSS_TRACK_ARRAY if s != 0.0]
+			s2 = []
+			xt = []
+			for i, x in enumerate(datagram.ACROSS_TRACK_ARRAY):
+				# ignore small cross track offsets.  some GSF files have -0.01 for the outer beams where there is no observation. This screws up the numpy inter routine
+				if abs(x) > 0.1:
+					xt.append(x)
+					s2.append(samplearray[i])
+			# xp = np.array(datagram.ACROSS_TRACK_ARRAY) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
+			xp = np.array(xt) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
+			fp = np.array(s2) #the Backscatter list as a numpy array
+			# fp = np.abs(np.array(samplearray)) #the Backscatter list as a numpy array
 			x = np.linspace(leftExtent, rightExtent, outputResolution) #the required samples needs to be about the same as the original number of samples, spread across the across track range
 			newBackscatters = np.interp(x, xp, fp, left=0.0, right=0.0)
-
-			# run a median filter to remove crazy noise
-			# newBackscatters = geodetic.medfilt(newBackscatters,3)
-			waterfall.append(np.asarray(newBackscatters))			
+			
+			if datagram.frequency == 100000:
+				waterfall100.append(np.asarray(newBackscatters))			
+				# samplearray = np.asarray(newBackscatters)
+				# samplearray = xt
+				# print ("xt %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" %(samplearray[0], samplearray[10], samplearray[20], samplearray[30], samplearray[40], samplearray[50], samplearray[60], samplearray[70], samplearray[80], samplearray[90], samplearray[100], samplearray[110], samplearray[120], samplearray[130], samplearray[140], samplearray[150], samplearray[160], samplearray[170], samplearray[180], samplearray[190],))
+			if datagram.frequency == 200000:
+				waterfall200.append(np.asarray(newBackscatters))			
+			if datagram.frequency == 400000:
+				waterfall400.append(np.asarray(newBackscatters))			
 
 			recCount += 1
+			# temp to make things faster
+			if recCount == 200:
+				break
+
 			if datagram.currentRecordDateTime().timestamp() % 30 == 0:
 				percentageRead = (recCount / totalrecords) 
 				update_progress("Decoding .gsf file", percentageRead)
 	update_progress("Decoding .gsf file", 1)
 	r.close()	
+
+	createImage(filename, odir, "100kHz", colorScale, beamCount, waterfall100, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	createImage(filename, odir, "200kHz", colorScale, beamCount, waterfall200, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	createImage(filename, odir, "400kHz", colorScale, beamCount, waterfall400, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+
+def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1.0, clip=0, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
+
+	isoStretchFactor = (yResolution/xResolution) * zoom
+	print ("xRes %.2f yRes %.2f isoStretchFactor %.2f" % (xResolution, yResolution, isoStretchFactor))
+
 
 	# we have all data loaded, so now lets make a waterfall image...
 	#---------------------------------------------------------------	
@@ -129,11 +157,14 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, inv
 		y = np.linspace(0, len(column), len(column) * isoStretchFactor) #the required samples
 		yp = np.arange(len(column)) 
 		w2 = np.interp(y, yp, column, left=0.0, right=0.0)
-		# w2 = geodetic.medfilt(w2,7)
-		
+		# w2 = geodetic.medfilt(w2,7)		
 		stretchedGrid = np.append(stretchedGrid, [w2],axis=0)
 	npGrid = stretchedGrid
 	# npGrid = np.ma.masked_values(npGrid, 0.0)
+	
+	# # we need to remember the actual data extents so we can set the color palette mappings to the same limits. 			
+	# minBS = min(minBS, min(samplearray))
+	# maxBS = max(maxBS, max(samplearray))
 	
 	if colorScale.lower() == "graylog": 
 		print ("Converting to Image with graylog scale...")
@@ -154,7 +185,7 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, inv
 	if rotate:
 		img = img.rotate(-90, expand=True)
 
-	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename[0])), odir, os.path.splitext(filename)[0] + "_Waterfall_" + str(frequency) + ".png")
+	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename[0])), odir, os.path.splitext(filename)[0] + "_Waterfall_" + suffix + ".png")
 	# img.save(os.path.splitext(filename)[0]+'.png')
 	img.save(outFileName)
 	print ("Saved to: ", os.path.splitext(filename)[0]+'.png')
@@ -163,8 +194,9 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, inv
 def findMinMaxClipValues(channel, clip):
 	print ("Clipping data with an upper and lower percentage of:", clip)
 	# compute a histogram of teh data so we can auto clip the outliers
-	bins = np.arange(np.floor(channel.min()),np.ceil(channel.max()))
-	hist, base = np.histogram(channel, bins=bins, density=1)	
+	cleanChannel = ~np.isnan(channel)
+	bins = np.arange(np.floor(cleanChannel.min()),np.ceil(cleanChannel.max()))
+	hist, base = np.histogram(cleanChannel, bins=bins, density=1)	
 
 	# instead of spreading across the entire data range, we can clip the outer n percent by using the cumsum.
 	# from the cumsum of histogram density, we can figure out what cut off sample amplitude removes n % of data
@@ -173,87 +205,91 @@ def findMinMaxClipValues(channel, clip):
 	minimumBinIndex = bisect.bisect(cumsum,clip/100)
 	maximumBinIndex = bisect.bisect(cumsum,(1-clip/100))
 
-	# if DEBUG:
-	#	 min = np.floor(channel.min())
-	#	 max = np.ceil (channel.max())
-	#	 # bins = np.arange(min, max, (max-min)/10)
-	#	 # XBins = np.arange(10)
-	#	 hist, bins = np.histogram(channel.flat, bins = 100)
-	#	 width = 0.7 * (bins[1] - bins[0])
-	#	 center = (bins[:-1] + bins[1:]) / 2
-	#	 plt.bar(center, hist, align='center', width=width)
-	#	 # plt.xlim(int(bin_edges.min()), int(bin_edges.max()))
-	#	 plt.show()
+	DEBUG = False
+	if DEBUG:
+		min = np.floor(channel.min())
+		max = np.ceil (channel.max())
+		# bins = np.arange(min, max, (max-min)/10)
+		# XBins = np.arange(10)
+		hist, bins = np.histogram(channel.flat, bins = 100)
+		width = 0.7 * (bins[1] - bins[0])
+		center = (bins[:-1] + bins[1:]) / 2
+		plt.bar(center, hist, align='center', width=width)
+		# plt.xlim(int(bin_edges.min()), int(bin_edges.max()))
+		plt.show()
 
-		# mu, sigma = 100, 15
-		# x = mu + sigma * np.random.randn(10000)
-		# hist, bins = np.histogram(x, bins=50)
-		# width = 0.7 * (bins[1] - bins[0])
-		# center = (bins[:-1] + bins[1:]) / 2
-		# plt.bar(center, hist, align='center', width=width)
-		# plt.show()
+		mu, sigma = 100, 15
+		x = mu + sigma * np.random.randn(10000)
+		hist, bins = np.histogram(x, bins=50)
+		width = 0.7 * (bins[1] - bins[0])
+		center = (bins[:-1] + bins[1:]) / 2
+		plt.bar(center, hist, align='center', width=width)
+		plt.show()
 
-		# width = 0.7 * (bins[1] - bins[0])
-		# center = (bins[:-1] + bins[1:]) / 2
-		# plt.bar(center, hist, align='center', width=width)
-		# plt.show()
+		width = 0.7 * (bins[1] - bins[0])
+		center = (bins[:-1] + bins[1:]) / 2
+		plt.bar(center, hist, align='center', width=width)
+		plt.show()
 
 	return minimumBinIndex, maximumBinIndex
 
 ###################################
-# zg_LL = lower limit of grey scale
-# zg_UL = upper limit of grey scale
-# zs_LL = lower limit of samples range
-# zs_UL = upper limit of sample range
+# gray_LL = lower limit of grey scale
+# gray_UL = upper limit of grey scale
+# sample_LL = lower limit of samples range
+# sample_UL = upper limit of sample range
 
 ###################################
-# zg_LL = lower limit of grey scale
-# zg_UL = upper limit of grey scale
-# zs_LL = lower limit of samples range
-# zs_UL = upper limit of sample range
+# gray_LL = lower limit of grey scale
+# gray_UL = upper limit of grey scale
+# sample_LL = lower limit of samples range
+# sample_UL = upper limit of sample range
 def samplesToGrayImage(samples, invert, clip):
-	zg_LL = 50 # min and max grey scales
-	zg_UL = 200
-	zs_LL = 0 
-	zs_UL = 0
+	gray_LL = 50 # min and max grey scales
+	gray_UL = 200
+	sample_LL = 0 
+	sample_UL = 0
 	conv_01_99 = 1
 	
 	#create numpy arrays so we can compute stats
-	channel = np.array(samples)   
+	channel = np.array(samples)
+	# channel[channel == 0] = np.nan
+	channel = np.where(channel == 0, np.nan, channel)  # Set all data larger than 0.8 to NaN
+
+	channel = np.ma.array(channel, mask=np.isnan(channel)) # Use a mask to mark the NaNs
 
 	# compute the clips
 	if clip > 0:
-		zs_LL, zs_UL = findMinMaxClipValues(channel, clip)
+		sample_LL, sample_UL = findMinMaxClipValues(channel, clip)
 	else:
-		zs_LL = channel.min()
-		zs_UL = channel.max()
-	
+		sample_LL = channel.min()
+		sample_UL = channel.max()
+		print ("sample range LL %.3f UL %.3f" % (sample_LL, sample_UL))
 	# this scales from the range of image values to the range of output grey levels
-	if (zs_UL - zs_LL) is not 0:
-		conv_01_99 = ( zg_UL - zg_LL ) / ( zs_UL - zs_LL )
-   
+	if (sample_UL - sample_LL) is not 0:
+		conv_01_99 = ( gray_UL - gray_LL ) / ( sample_UL - sample_LL )
+		print ("sample to gray conversion scale", conv_01_99)
 	#we can expect some divide by zero errors, so suppress 
 	np.seterr(divide='ignore')
-	# channel = np.log(samples)
-	channel = np.subtract(channel, zs_LL)
+	channel = np.subtract(channel, sample_LL)
 	channel = np.multiply(channel, conv_01_99)
 	if invert:
-		channel = np.subtract(zg_UL, channel)
+		channel = np.subtract(gray_UL, channel)
 	else:
-		channel = np.add(zg_LL, channel)
+		channel = np.add(gray_LL, channel)
 	image = Image.fromarray(channel).convert('L')
 	return image
 
 ###################################
-# zg_LL = lower limit of grey scale
-# zg_UL = upper limit of grey scale
-# zs_LL = lower limit of samples range
-# zs_UL = upper limit of sample range
+# gray_LL = lower limit of grey scale
+# gray_UL = upper limit of grey scale
+# sample_LL = lower limit of samples range
+# sample_UL = upper limit of sample range
 def samplesToGrayImageLogarithmic(samples, invert, clip):
-	zg_LL = 0 # 
-	zg_UL = 255 # a lower number clips the white and makes the image darker
-	zs_LL = 0 
-	zs_UL = 0
+	gray_LL = 0 # 
+	gray_UL = 255 # a lower number clips the white and makes the image darker
+	sample_LL = 0 
+	sample_UL = 0
 	conv_01_99 = 1
 	# channelMin = 0
 	# channelMax = 0
@@ -268,27 +304,27 @@ def samplesToGrayImageLogarithmic(samples, invert, clip):
 		channelMax = channel.max()
 	
 	if channelMin > 0:
-		zs_LL = math.log(channelMin)
+		sample_LL = math.log(channelMin)
 	else:
-		zs_LL = 0
+		sample_LL = 0
 	if channelMax > 0:
-		zs_UL = math.log(channelMax)
+		sample_UL = math.log(channelMax)
 	else:
-		zs_UL = 0
+		sample_UL = 0
 	
 	# this scales from the range of image values to the range of output grey levels
-	if (zs_UL - zs_LL) is not 0:
-		conv_01_99 = ( zg_UL - zg_LL ) / ( zs_UL - zs_LL )
+	if (sample_UL - sample_LL) is not 0:
+		conv_01_99 = ( gray_UL - gray_LL ) / ( sample_UL - sample_LL )
    
 	#we can expect some divide by zero errors, so suppress 
 	np.seterr(divide='ignore')
 	channel = np.log(samples)
-	channel = np.subtract(channel, zs_LL)
+	channel = np.subtract(channel, sample_LL)
 	channel = np.multiply(channel, conv_01_99)
 	if invert:
-		channel = np.subtract(zg_UL, channel)
+		channel = np.subtract(gray_UL, channel)
 	else:
-		channel = np.add(zg_LL, channel)
+		channel = np.add(gray_LL, channel)
 	# ch = channel.astype('uint8')
 	image = Image.fromarray(channel).convert('L')
 	

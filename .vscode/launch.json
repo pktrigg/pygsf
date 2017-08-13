@@ -17,7 +17,7 @@
 				"WaitOnNormalExit",
 				"RedirectOutput"
 			],
-					"args": ["-i", "C:/development/python/sample_subset.gsf", "-extractbs"\
+					"args": ["-i", "F:/Projects/multispectral/Newbex/20170524-182547 - 0001-2026_1.gsf"\
 		},
 	]
 }

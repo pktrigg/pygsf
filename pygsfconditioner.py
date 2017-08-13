@@ -3,7 +3,6 @@
 #by:			p.kennedy@fugro.com
 #description:	python module to pre-process a gsf sonar file and do useful hings with it
 #				See readme.md for more details
-# more changes
 
 import csv
 import sys
@@ -18,10 +17,6 @@ from datetime import timedelta
 from glob import glob
 import pygsf
 import struct
-# from bisect import bisect_left, bisect_right
-# import sortedcollection
-# from operator import itemgetter
-# from collections import deque
 
 ###############################################################################
 def main():
@@ -30,7 +25,6 @@ def main():
 	parser.add_argument('-exclude', dest='exclude', action='store', default="", help='Exclude these records.  Note: this needs to be case sensitive e.g. -exclude 12,22')
 	parser.add_argument('-dump', action='store_true', default=False, dest='dump', help='Ascii Dump of the GSF file. [Default: False]')
 	parser.add_argument('-extractbs', action='store_true', default=False, dest='extractbs', help='Extract backscatter from snippet so we can analyse. [Default: False]')
-	# parser.add_argument('-frequency', dest='frequency', action='store', default="", help='process this frquency in Hz. [Default = ""]')
 	parser.add_argument('-i', dest='inputFile', action='store', help='Input gsf filename. It can also be a wildcard, e.g. *.gsf')
 	parser.add_argument('-o', dest='outputFile', action='store', help='Output gsf filename. If not supplied, a filename is auto generated. [Default = ""')
 	parser.add_argument('-odir', dest='odir', action='store', default="", help='Specify a relative output folder e.g. -odir conditioned')
@@ -49,15 +43,10 @@ def main():
 	dump = False
 	latitude = 0
 	longitude = 0
-	# frequency = 0
 	exclude = []
 
 	if args.dump:
 		dump = args.dump
-
-	# if args.frequency:
-	# 	frequency = int(args.frequency)
-	# 	writeConditionedFile = False
 
 	if args.recursive:
 		for root, dirnames, filenames in os.walk(os.path.dirname(args.inputFile)):
@@ -89,7 +78,6 @@ def main():
 		# make an arc which supports triple frequency.  we can then analyse all frequencies at the same time
 		ARC = [[pygsf.cBeam(beamdetail, i), pygsf.cBeam(beamdetail, i), pygsf.cBeam(beamdetail, i)] for i in range(startAngle, -startAngle)]
 		# use a dictionary so we can easily find the correct array by frequency
-		ARCIdx = {100000: 0, 200000: 1, 400000: 2}
 		beamPointingAngles = []
 		transmitSector = []
 
@@ -100,10 +88,10 @@ def main():
 		if writeConditionedFile:
 			createsubsetfile(filename, str(args.odir), exclude)
 		if extractBackscatter:
-			# we will make 1 ARC for all 3 frequencies, 1 per column
 			outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve_.csv")
 			outFileName = createOutputFileName(outFileName)
-			ARC, beamPointingAngles, transmitSector = extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector)
+			ARC = extractARC(filename, ARC, pygsf.ARCIdx, beamPointingAngles, transmitSector)
+			# ARC, beamPointingAngles, transmitSector = extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector)
 
 		update_progress("Processed: %s (%d/%d)" % (filename, fileCounter, len(matches)), (fileCounter/len(matches)))
 		fileCounter +=1
@@ -194,66 +182,30 @@ def	createsubsetfile(filename, odir, exclude):
 	return
 
 ###############################################################################
-def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector, perBeam=False):
+def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector, perBeam=True):
 	r = pygsf.GSFREADER(filename, True)
-	counter = 0
 
 	while r.moreData():
-		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
+		# read a datagram.  If we support it, return the datagram type and a class for that datagram
 		numberofbytes, recordidentifier, datagram = r.readDatagram()
 
 		'''to extract backscatter angular response curve we need to keep a count and sum of gsf samples in a per degree sector'''
 		'''to do this, we need to take into account the take off angle of each beam'''
 		if recordidentifier == pygsf.SWATH_BATHYMETRY:
 			datagram.scalefactors = r.scalefactors	
+			datagram.snippettype = pygsf.SNIPPET_NONE
 			datagram.read()
 
-			# if datagram.frequency != frequency:
-			# 	# 	print ("skipping freq: %d" % datagram.frequency)
-			# 	continue
-
-			# pkpk not sure we need this.  try and clean it up
-			beamPointingAngles = datagram.BEAM_ANGLE_ARRAY
-			transmitSector = datagram.SECTOR_NUMBER_ARRAY
-
-			if perBeam:
-				samplearray = datagram.MEAN_REL_AMPLITUDE_ARRAY
-			else:
-				samplearray = datagram.SNIPPET_SERIES_ARRAY
-
-			# an implementation of the backscatter correction algorithm from Norm Campbell at CSIRO
-			H0_TxPower = datagram.transmitsourcelevel
-			H0_SoundSpeed = datagram.soundspeed
-			H0_RxAbsorption = datagram.absorptioncoefficient
-			H0_TxBeamWidthVert = math.radians(datagram.beamwidthvertical)
-			H0_TxBeamWidthHoriz = math.radians(datagram.beamwidthhorizontal)
-			H0_TxPulseWidth = datagram.pulsewidth
-			H0_RxSpreading = datagram.receiverspreadingloss
-			H0_RxGain = datagram.receivergain
-			H0_VTX_Offset = datagram.vtxoffset / 100  # -21.0 / 100 #????  Ask Norm
-
+			# we have an R2 system, so we can apply a backscatter correction algorithm
+			samplearray = datagram.R2Soniccorrection(perBeam)
+			idx = pygsf.ARCIdx[datagram.frequency]
 			for i in range(datagram.numbeams):
-				S1_angle = datagram.BEAM_ANGLE_ARRAY[i] #angle in degrees
-				S1_twtt = datagram.TRAVEL_TIME_ARRAY[i]
-				S1_range = math.sqrt((datagram.ACROSS_TRACK_ARRAY[i] ** 2) + (datagram.ALONG_TRACK_ARRAY[i] ** 2))
-				S1_uPa = max(0.01, samplearray[i]) #trap impossible values
-				adjusted = datagram.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
-				samplearray[i] = adjusted
-			###################################################################
-
-			idx = ARCIdx[datagram.frequency]
-			for i in range(datagram.numbeams):
-				# now please the results into the correct bucket based on frequency
+				# now place the results into the correct bucket based on frequency
 				arcIndex = round(datagram.BEAM_ANGLE_ARRAY[i]- ARC[0][idx].takeOffAngle) # efficiently find the correct slot for the data
 				ARC[arcIndex][idx].sampleSum += samplearray[i]
 				ARC[arcIndex][idx].numberOfSamplesPerBeam += 1
 				ARC[arcIndex][idx].sector = datagram.SECTOR_NUMBER_ARRAY[i]
-
-		counter += 1
-		continue
-	return ARC, datagram.BEAM_ANGLE_ARRAY, datagram.SECTOR_NUMBER_ARRAY
-	# return ARC
-###############################################################################
+	return ARC
 
 ###############################################################################
 def from_timestamp(unixtime):

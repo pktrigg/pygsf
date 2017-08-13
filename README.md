@@ -9,6 +9,8 @@ This is going to use the standard libraries from python, ie NOT use numpy, gsgli
 * make a las file of RGB where each color is an intensity
 
 # DONE
+* implemented options for snippet processing mean, max, dected and mean5db
+* fixed bug in backscatter algorithm if range was 0m.  this is an invalid beam so return 0 for backscatter
 * make conditioning ARC code work on all frequncies simultaneously
 * snippets is now available in 2 forms: detect value or mean of all samples in beam.
 * fixed bug in conditioner where extraction routine was using intensity array instead of mean_rel_array

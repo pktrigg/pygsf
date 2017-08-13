@@ -38,6 +38,15 @@ SINGLE_BEAM_SOUNDING					= 10
 HV_NAVIGATION_ERROR						= 11
 ATTITUDE								= 12
 
+SNIPPET_NONE 							= 0  # extract the mean value from the snippet array
+SNIPPET_MEAN 							= 1  # extract the mean value from the snippet array
+SNIPPET_MAX 							= 2  # extract the maximum value from the snippet array
+SNIPPET_DETECT 							= 3	 # extract the bottom detect snippet value from the snippet array
+SNIPPET_MEAN5DB 						= 4  # extract the mean of all snippets within 5dB of the mean
+
+# the various frequencies we support in the R2Sonic multispectral files
+ARCIdx = {100000: 0, 200000: 1, 400000: 2}
+
 ###############################################################################
 def main():
 
@@ -46,114 +55,114 @@ def main():
 	# conditioner()
 
 ###############################################################################
-def testR2SonicAdjustment():
-	'''
-	This test code confirms the results are in alignment with those from Norm Campbell at CSIRO who kindly provided the code in F77
-	'''
-	# adjusted backscatter          -38.6
-	# adjusted backscatter          -47.6
-	# adjusted backscatter          -27.5
-	# adjusted backscatter          -36.6
-	# adjusted backscatter          -35.5
+# def testR2SonicAdjustment():
+# 	'''
+# 	This test code confirms the results are in alignment with those from Norm Campbell at CSIRO who kindly provided the code in F77
+# 	'''
+# 	# adjusted backscatter          -38.6
+# 	# adjusted backscatter          -47.6
+# 	# adjusted backscatter          -27.5
+# 	# adjusted backscatter          -36.6
+# 	# adjusted backscatter          -35.5
 
-	S1_angle = -58.0
-	S1_twtt = 0.20588
-	S1_range = 164.8
-	H0_TxPower = 197.0
-	H0_SoundSpeed = 1468.59
-	H0_RxAbsorption = 80.0
-	H0_TxBeamWidthVert = 0.0174533
-	H0_TxBeamWidthHoriz = 0.0087266
-	H0_TxPulseWidth = 0.000275
-	H0_RxSpreading = 35.0
-	H0_RxGain = 8.0
-	H0_VTX_Offset = -21.0 / 100.
+# 	S1_angle = -58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 197.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 35.0
+# 	H0_RxGain = 8.0
+# 	H0_VTX_Offset = -21.0 / 100.
 
-	n_snpt_val = 470
-	S1_uPa = n_snpt_val
-	z_snpt_BS_dB = 20. * math.log10(S1_uPa)
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10(S1_uPa)
 
-	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-	print (adjusted)
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
 
-	S1_angle = -58.0
-	S1_twtt = 0.20588
-	S1_range = 164.8
-	H0_TxPower = 206.0
-	H0_SoundSpeed = 1468.59
-	H0_RxAbsorption = 80.0
-	H0_TxBeamWidthVert = 0.0174533
-	H0_TxBeamWidthHoriz = 0.0087266
-	H0_TxPulseWidth = 0.000275
-	H0_RxSpreading = 35.0
-	H0_RxGain = 8.0
-	H0_VTX_Offset = -21.0 / 100.
+# 	S1_angle = -58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 206.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 35.0
+# 	H0_RxGain = 8.0
+# 	H0_VTX_Offset = -21.0 / 100.
 
-	n_snpt_val = 470
-	S1_uPa = n_snpt_val
-	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-	print (adjusted)
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
 
-	S1_angle = - 58.0
-	S1_twtt = 0.20588
-	S1_range = 164.8
-	H0_TxPower = 197.0
-	H0_SoundSpeed = 1468.59
-	H0_RxAbsorption = 80.0
-	H0_TxBeamWidthVert = 0.0174533
-	H0_TxBeamWidthHoriz = 0.0087266
-	H0_TxPulseWidth = 0.000275
-	H0_RxSpreading = 30.0
-	H0_RxGain = 8.0
-	H0_VTX_Offset = -21.0 / 100.
+# 	S1_angle = - 58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 197.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 30.0
+# 	H0_RxGain = 8.0
+# 	H0_VTX_Offset = -21.0 / 100.
 
-	n_snpt_val = 470
-	S1_uPa = n_snpt_val
-	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-	print (adjusted)
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
 
-	S1_angle = - 58.0
-	S1_twtt = 0.20588
-	S1_range = 164.8
-	H0_TxPower = 197.0
-	H0_SoundSpeed = 1468.59
-	H0_RxAbsorption = 80.0
-	H0_TxBeamWidthVert = 0.0174533
-	H0_TxBeamWidthHoriz = 0.0087266
-	H0_TxPulseWidth = 0.000275
-	H0_RxSpreading = 35.0
-	H0_RxGain = 6.0
-	H0_VTX_Offset = -21.0 / 100.
+# 	S1_angle = - 58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 197.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 35.0
+# 	H0_RxGain = 6.0
+# 	H0_VTX_Offset = -21.0 / 100.
 
-	n_snpt_val = 470
-	S1_uPa = n_snpt_val
-	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-	print (adjusted)
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
 
 
-	S1_angle = - 58.0
-	S1_twtt = 0.20588
-	S1_range = 164.8
-	H0_TxPower = 207.0
-	H0_SoundSpeed = 1468.59
-	H0_RxAbsorption = 80.0
-	H0_TxBeamWidthVert = 0.0174533
-	H0_TxBeamWidthHoriz = 0.0087266
-	H0_TxPulseWidth = 0.000275
-	H0_RxSpreading = 30.0
-	H0_RxGain = 6.0
-	H0_VTX_Offset = -21.0 / 100.
+# 	S1_angle = - 58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 207.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 30.0
+# 	H0_RxGain = 6.0
+# 	H0_VTX_Offset = -21.0 / 100.
 
-	n_snpt_val = 470
-	S1_uPa = n_snpt_val
-	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-	print (adjusted)
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
 
-	return
+# 	return
 
 
 
@@ -268,6 +277,7 @@ class SWATH_BATHYMETRY_PING :
 		self.SECTOR_NUMBER_ARRAY = []
 		self.INTENSITY_SERIES_ARRAY = []
 		self.SNIPPET_SERIES_ARRAY = []
+		self.snippettype = SNIPPET_MAX
 
 	def __str__(self):
 		'''
@@ -356,7 +366,7 @@ class SWATH_BATHYMETRY_PING :
 				self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
 			elif subrecord_id == 21: 
 				before = self.fileptr.tell()
-				self.readintensityarray(self.INTENSITY_SERIES_ARRAY, self.SNIPPET_SERIES_ARRAY, scale, offset, datatype)
+				self.readintensityarray(self.INTENSITY_SERIES_ARRAY, self.SNIPPET_SERIES_ARRAY, scale, offset, datatype, self.snippettype)
 				if subrecord_size % 4 > 0:
 					self.fileptr.seek(4 - (subrecord_size % 4), 1) #pkpk we should not need this!!!
 			elif subrecord_id == 22: 
@@ -417,7 +427,7 @@ class SWATH_BATHYMETRY_PING :
 		# print (self.scalefactors)
 		return
 
-	def readintensityarray(self, values, snippets, scale, offset, datatype):
+	def readintensityarray(self, values, snippets, scale, offset, datatype, snippettype):
 		''' 
 		read the time series intensity array type 21 subrecord
 		'''
@@ -450,32 +460,78 @@ class SWATH_BATHYMETRY_PING :
 			
 			data = self.fileptr.read(l)  
 			raw = rec_unpack(data)
-			for d in raw:
-				values.append((d / scale) + offset)
+			# strip out zero values
+			raw = [s for s in raw if s != 0]
 
-			# populate the array with the mean of all samples	 
-			# if len(raw) > 0:
-			# 	snippets.append((sum(raw) / float(len(raw) / scale) + offset))
-			# else:
-			# 	snippets.append(0)
-
-			# populate the array with the MAX of all samples	 
-			if len(raw) > 0:
-				snippets.append(max(raw) / scale + offset)
-			else:
+			if snippettype == SNIPPET_NONE:
 				snippets.append(0)
-
-			# if bottomdetectsamplenumber > 0:
-			# 	snippets.append ((raw[bottomdetectsamplenumber] / scale) + offset)
-			# else:
-			# 	snippets.append (0)
+				continue
+			elif snippettype == SNIPPET_MEAN5DB:
+				# populate the array with the mean of all samples withing a 5dB range of the mean.  As per QPS
+				if len(raw) > 0:
+					raw2 = [20.0 * math.log10(s / scale + offset) for s in raw]
+					mean = (sum(raw2) / float(len(raw2) ))
+					highcut = [s for s in raw2 if s < mean + 5] #high cut +5dB
+					highlowcut = [s for s in highcut if s > mean - 5] #low cut -5dB
+				else:
+					snippets.append(0)
+					continue
+				if len(highlowcut) > 0:
+					snippets.append((sum(highlowcut) / float(len(highlowcut) / scale) + offset))
+				else:
+					snippets.append((mean / scale) + offset)
+			elif snippettype == SNIPPET_MEAN:
+				# populate the array with the mean of all samples	 
+				if len(raw) > 0:
+					snippets.append((sum(raw) / float(len(raw) / scale) + offset))
+				else:
+					snippets.append(0)
+			elif snippettype == SNIPPET_MAX:
+				# populate the array with the MAX of all samples	 
+				if len(raw) > 0:
+					snippets.append(max(raw) / scale + offset)
+				else:
+					snippets.append(0)
+			elif snippettype == SNIPPET_MEAN:
+				# populate with a single value as identified by the bottom detect
+				if bottomdetectsamplenumber > 0:
+					snippets.append ((raw[bottomdetectsamplenumber] / scale) + offset)
+				else:
+					snippets.append (0)
 		return
 
 ###############################################################################
+	def R2Soniccorrection(self, perBeam=True):
+		'''entry point for r2sonic backscatter TVG, Gain and footprint correction algorithm'''
+
+		if perBeam:
+			samplearray = self.MEAN_REL_AMPLITUDE_ARRAY
+		else:
+			samplearray = self.SNIPPET_SERIES_ARRAY
+
+		# an implementation of the backscatter correction algorithm from Norm Campbell at CSIRO
+		H0_TxPower = self.transmitsourcelevel
+		H0_SoundSpeed = self.soundspeed
+		H0_RxAbsorption = self.absorptioncoefficient
+		H0_TxBeamWidthVert = math.radians(self.beamwidthvertical)
+		H0_TxBeamWidthHoriz = math.radians(self.beamwidthhorizontal)
+		H0_TxPulseWidth = self.pulsewidth
+		H0_RxSpreading = self.receiverspreadingloss
+		H0_RxGain = self.receivergain
+		H0_VTX_Offset = self.vtxoffset / 100  # -21.0 / 100 #????  Ask Norm
+
+		for i in range(self.numbeams):
+			S1_angle = self.BEAM_ANGLE_ARRAY[i] #angle in degrees
+			S1_twtt = self.TRAVEL_TIME_ARRAY[i]
+			S1_range = math.sqrt((self.ACROSS_TRACK_ARRAY[i] ** 2) + (self.ALONG_TRACK_ARRAY[i] ** 2))
+			S1_uPa = max(0.01, samplearray[i]) #trap impossible values
+			adjusted = self.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
+			samplearray[i] = adjusted
+		return samplearray
 
 ###############################################################################
 	def R2Sonicbackscatteradjustment(self, S1_angle, S1_twtt, S1_range, S1_Magnitude, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset):
-
+		'''R2Sonic backscatter correction algorithm from Norm Camblell at CSIRO.  This is a port from F77 fortran code, and has been tested and confirmed to provide identical results'''
 		# iot = 7
 		# print("angle", S1_angle)
 
@@ -496,11 +552,12 @@ class SWATH_BATHYMETRY_PING :
 
 		# print("one-way travel", z_one_way_travel_secs)
 
-		z_range_m = z_one_way_travel_secs * H0_SoundSpeed
-
-		# print("range", z_range_m)
-
+		# z_range_m = z_one_way_travel_secs * H0_SoundSpeed
 		z_range_m = S1_range
+
+		# there is a range of zero, so this is an invalid beam, so quite
+		if z_range_m == 0:
+			return 0
 
 		# print("range", z_range_m)
 
@@ -710,7 +767,7 @@ class GSFHEADER:
 class GSFREADER:
 	def __init__(self, filename, loadscalefactors=False):
 		'''
-		Class to read generic sensor format files.
+		class to read generic sensor format files.
 		'''
 		if not os.path.isfile(filename):
 			print ("file not found:", filename)
