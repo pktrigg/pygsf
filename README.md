@@ -4,6 +4,7 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
+* implement angular clips
 * make a las file for each frequency where intensity is the amplitude data
 * make a las file of RGB where each color is an intensity
 
