@@ -459,6 +459,7 @@ class SWATH_BATHYMETRY_PING :
 			# else:
 			# 	snippets.append(0)
 
+			# populate the array with the MAX of all samples	 
 			if len(raw) > 0:
 				snippets.append(max(raw) / scale + offset)
 			else:
