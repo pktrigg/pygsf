@@ -17,12 +17,12 @@
 				"WaitOnNormalExit",
 				"RedirectOutput"
 			],
-					"args": ["-i", "F:/Projects/multispectral/Newbex/20170524-182547 - 0001-2026_1.gsf"\
+					"args": ["-i", "C:/development/python/sample_subset.gsf", "-arc", "C:/development/python/waterfall/AngularResponseCurve_.csv"\
 		},
 	]
 }
+					"args": ["-i", "F:/Projects/multispectral/Newbex/20170524-182547 - 0001-2026_1.gsf"\
 					"args": ["-i", "C:/development/python/sample_subset.gsf", "-odir", "waterfall","-frequency", "100000"\
-					"args": ["-i", "C:/development/python/sample_subset.gsf"\
 					"args": ["-i", "F:/Projects/multispectral/Bedford Basin-2 Data Sets/20160331 - Bedford Basin/GSF/20160331 - 125110 - 0001-2026_1.gsf", "-extractbs", "-frequency", "100000"\
 					"args": ["-i", "F:/Projects/multispectral/20161130 - Patricia Bay/GSF/20161129-2148 - 0001-2026_1.gsf"\
 

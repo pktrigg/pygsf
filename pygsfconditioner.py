@@ -117,7 +117,7 @@ def saveARC(outFileName, ARC):
 	# 	responseAverage = responseSum/responseCount
 	with open(outFileName, 'w') as f:
 		# write out the backscatter response curve
-		f.write("TakeOffAngle(Deg), Sector, 100kHz_ARC(dB), 100kHzSampleSum, 100kHzSampleCount, 200kHz_ARC(dB), 200kHzSampleSum, 200kHzSampleCount, 400kHz_ARC(dB), 400kHzSampleSum, 400kHzSampleCount, Correction\n")
+		f.write("TakeOffAngle(Deg),Sector,100kHz_ARC(dB),100kHzSampleSum,100kHzSampleCount,200kHz_ARC(dB),200kHzSampleSum,200kHzSampleCount,400kHz_ARC(dB),400kHzSampleSum,400kHzSampleCount,Correction\n")
 		for record in ARC:
 			for beam in record:
 				if beam.numberOfSamplesPerBeam > 0:

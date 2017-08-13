@@ -8,10 +8,10 @@ from datetime import datetime
 import geodetic
 from glob import glob
 import math
-from matplotlib import pyplot as plt
-from matplotlib import cm
+# from matplotlib import pyplot as plt
+# from matplotlib import cm
 import numpy as np
-from PIL import Image,ImageDraw,ImageFont, ImageOps, ImageChops
+from PIL import Image,ImageDraw,ImageFont, ImageOps, ImageChops, ImageFilter
 import pygsf
 import time
 import os.path
@@ -30,12 +30,25 @@ def main():
 	parser.add_argument('-odir', dest='odir', action='store', default="", help='Specify a relative output folder e.g. -odir conditioned')
 	parser.add_argument('-r', action='store_true', default=False, dest='rotate', help='-r : Rotate the resulting waterfall so the image reads from left to right instead of bottom to top.  [Default is bottom to top]')
 	parser.add_argument('-z', dest='zoom', default = 0, action='store', help='-z <value> : Zoom scale factor. A larger number makes a larger image, and a smaller number (0.5) provides a smaller image, e.g -z 2 makes an image twice the native resolution. [Default: 0]')
+	parser.add_argument('-arc', dest='arc', action='store', default="", help='apply an angular response curve to the data e.g. -arc c:\\arc.csv')
 
 	if len(sys.argv)==1:
 		parser.print_help()
 		sys.exit(1)
 	
 	args = parser.parse_args()
+
+	applyarc=False
+
+	arc=[]
+	# load the angular response curve we wish to apply
+	if args.arc:
+		applyarc=True
+		print ("Loading angular response curve:", args.arc)
+		with open(args.arc) as csvFile:
+			reader = csv.DictReader(csvFile)
+			for row in reader:
+				arc.append([float(row["100kHz_ARC(dB)"]), float(row["200kHz_ARC(dB)"]), float(row["400kHz_ARC(dB)"]), float(row["TakeOffAngle(Deg)"])])
 
 	print ("processing with settings: ", args)
 	for filename in glob(args.inputFile):
@@ -46,16 +59,17 @@ def main():
 			print ("file not found:", filename)
 			exit()
 
-		# xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
-		# print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
-		# pkpk
-		beamCount = 512
-		xResolution = 0.4
-		yResolution = 0.27
-		leftExtent = -62.22
-		rightExtent = 59.23
-		distanceTravelled = 488.05
-		navigation = []
+		xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
+		print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
+		# pkpk tmp
+		# beamCount = 512
+		# xResolution = 0.4
+		# yResolution = 0.27
+		# leftExtent = -62.22
+		# rightExtent = 59.23
+		# distanceTravelled = 488.05
+		# navigation = []
+		# pkpk tmp
 		if beamCount == 0:
 			print ("No data to process, skipping empty file")
 			continue
@@ -67,9 +81,9 @@ def main():
 			while (bc < 300):
 				zoom *= 2
 				bc *= zoom 
-		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), args.invert, args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), args.invert, args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation, applyarc, arc)
 
-def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
+def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[], applyarc=False, arc=[]):
 	print ("Processing file: ", filename)
 
 	start_time = time.time() # time the process
@@ -98,16 +112,18 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, inv
 			idx = pygsf.ARCIdx[datagram.frequency]
 
 			# we need to stretch the data to make it isometric, so lets use numpy interp routing to do that for Us
-								# raw2 = [20.0 * math.log10(s / scale + offset) for s in raw]
-
-			# datagram.ACROSS_TRACK_ARRAY = [s for s in datagram.ACROSS_TRACK_ARRAY if s != 0.0]
 			s2 = []
 			xt = []
 			for i, x in enumerate(datagram.ACROSS_TRACK_ARRAY):
 				# ignore small cross track offsets.  some GSF files have -0.01 for the outer beams where there is no observation. This screws up the numpy inter routine
 				if abs(x) > 0.1:
 					xt.append(x)
-					s2.append(samplearray[i])
+					if applyarc:
+						# angle = datagram.BEAM_ANGLE_ARRAY[i]
+						arcIndex = round(datagram.BEAM_ANGLE_ARRAY[i]) - int(arc[0][3]) # efficiently find the correct slot for the data
+						s2.append(samplearray[i] - arc[arcIndex][idx])
+					else:
+						s2.append(samplearray[i])
 			# xp = np.array(datagram.ACROSS_TRACK_ARRAY) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
 			xp = np.array(xt) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
 			fp = np.array(s2) #the Backscatter list as a numpy array
@@ -127,8 +143,8 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, inv
 
 			recCount += 1
 			# temp to make things faster
-			if recCount == 200:
-				break
+			# if recCount == 200:
+			# 	break
 
 			if datagram.currentRecordDateTime().timestamp() % 30 == 0:
 				percentageRead = (recCount / totalrecords) 
@@ -140,11 +156,10 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=0, inv
 	createImage(filename, odir, "200kHz", colorScale, beamCount, waterfall200, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
 	createImage(filename, odir, "400kHz", colorScale, beamCount, waterfall400, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
 
-def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1.0, clip=0, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
+def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1.0, clip=1, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
 
 	isoStretchFactor = (yResolution/xResolution) * zoom
 	print ("xRes %.2f yRes %.2f isoStretchFactor %.2f" % (xResolution, yResolution, isoStretchFactor))
-
 
 	# we have all data loaded, so now lets make a waterfall image...
 	#---------------------------------------------------------------	
@@ -157,14 +172,12 @@ def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1
 		y = np.linspace(0, len(column), len(column) * isoStretchFactor) #the required samples
 		yp = np.arange(len(column)) 
 		w2 = np.interp(y, yp, column, left=0.0, right=0.0)
-		# w2 = geodetic.medfilt(w2,7)		
+		# we can run a median filter to smooth it out a little, but maybe better in PIL? pkpk
+		w2 = geodetic.medfilt(w2,3)
+		w2 = geodetic.medfilt(w2,7)
 		stretchedGrid = np.append(stretchedGrid, [w2],axis=0)
 	npGrid = stretchedGrid
 	# npGrid = np.ma.masked_values(npGrid, 0.0)
-	
-	# # we need to remember the actual data extents so we can set the color palette mappings to the same limits. 			
-	# minBS = min(minBS, min(samplearray))
-	# maxBS = max(maxBS, max(samplearray))
 	
 	if colorScale.lower() == "graylog": 
 		print ("Converting to Image with graylog scale...")
@@ -172,6 +185,17 @@ def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1
 	elif colorScale.lower() == "gray":
 		print ("Converting to Image with gray scale...")
 		img = samplesToGrayImage(npGrid, invert, clip)
+
+	# now try some of the PIL image processing to clean up` 
+	# gaussian_kernel = ImageFilter.Kernel((3, 3), [1, 2, 1, 2, 4, 2, 1, 2, 1], 16)
+	# img = img.filter(gaussian_kernel)
+	# unsharpMask = ImageFilter.UnsharpMask(2.0, 125, 8)
+	# img = img.filter(unsharpMask)
+	# img = img.filter(ImageFilter.SMOOTH_MORE)
+
+	# img = ImageOps.autocontrast(img, 1)
+	# img = ImageOps.equalize(img)
+	# img = img.filter(ImageFilter.FIND_EDGES)
 
 	if annotate:
 		#rotate the image if the user requests this.  It is a little better for viewing in a browser
@@ -194,9 +218,9 @@ def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1
 def findMinMaxClipValues(channel, clip):
 	print ("Clipping data with an upper and lower percentage of:", clip)
 	# compute a histogram of teh data so we can auto clip the outliers
-	cleanChannel = ~np.isnan(channel)
-	bins = np.arange(np.floor(cleanChannel.min()),np.ceil(cleanChannel.max()))
-	hist, base = np.histogram(cleanChannel, bins=bins, density=1)	
+	# cleanChannel = ~np.isnan(channel)
+	bins = np.arange(np.floor(channel.min()),np.ceil(channel.max()))
+	hist, base = np.histogram(channel, bins=bins, density=1)	
 
 	# instead of spreading across the entire data range, we can clip the outer n percent by using the cumsum.
 	# from the cumsum of histogram density, we can figure out what cut off sample amplitude removes n % of data
@@ -204,34 +228,35 @@ def findMinMaxClipValues(channel, clip):
 	
 	minimumBinIndex = bisect.bisect(cumsum,clip/100)
 	maximumBinIndex = bisect.bisect(cumsum,(1-clip/100))
+	minclip = base[minimumBinIndex]
+	maxclip = base[maximumBinIndex]
+	# DEBUG = False
+	# if DEBUG:
+	# 	min = np.floor(channel.min())
+	# 	max = np.ceil (channel.max())
+	# 	# bins = np.arange(min, max, (max-min)/10)
+	# 	# XBins = np.arange(10)
+	# 	hist, bins = np.histogram(channel.flat, bins = 100)
+	# 	width = 0.7 * (bins[1] - bins[0])
+	# 	center = (bins[:-1] + bins[1:]) / 2
+	# 	plt.bar(center, hist, align='center', width=width)
+	# 	# plt.xlim(int(bin_edges.min()), int(bin_edges.max()))
+	# 	plt.show()
 
-	DEBUG = False
-	if DEBUG:
-		min = np.floor(channel.min())
-		max = np.ceil (channel.max())
-		# bins = np.arange(min, max, (max-min)/10)
-		# XBins = np.arange(10)
-		hist, bins = np.histogram(channel.flat, bins = 100)
-		width = 0.7 * (bins[1] - bins[0])
-		center = (bins[:-1] + bins[1:]) / 2
-		plt.bar(center, hist, align='center', width=width)
-		# plt.xlim(int(bin_edges.min()), int(bin_edges.max()))
-		plt.show()
+	# 	mu, sigma = 100, 15
+	# 	x = mu + sigma * np.random.randn(10000)
+	# 	hist, bins = np.histogram(x, bins=50)
+	# 	width = 0.7 * (bins[1] - bins[0])
+	# 	center = (bins[:-1] + bins[1:]) / 2
+	# 	plt.bar(center, hist, align='center', width=width)
+	# 	plt.show()
 
-		mu, sigma = 100, 15
-		x = mu + sigma * np.random.randn(10000)
-		hist, bins = np.histogram(x, bins=50)
-		width = 0.7 * (bins[1] - bins[0])
-		center = (bins[:-1] + bins[1:]) / 2
-		plt.bar(center, hist, align='center', width=width)
-		plt.show()
+	# 	width = 0.7 * (bins[1] - bins[0])
+	# 	center = (bins[:-1] + bins[1:]) / 2
+	# 	plt.bar(center, hist, align='center', width=width)
+	# 	plt.show()
 
-		width = 0.7 * (bins[1] - bins[0])
-		center = (bins[:-1] + bins[1:]) / 2
-		plt.bar(center, hist, align='center', width=width)
-		plt.show()
-
-	return minimumBinIndex, maximumBinIndex
+	return minclip, maxclip
 
 ###################################
 # gray_LL = lower limit of grey scale
@@ -253,14 +278,11 @@ def samplesToGrayImage(samples, invert, clip):
 	
 	#create numpy arrays so we can compute stats
 	channel = np.array(samples)
-	# channel[channel == 0] = np.nan
-	channel = np.where(channel == 0, np.nan, channel)  # Set all data larger than 0.8 to NaN
-
-	channel = np.ma.array(channel, mask=np.isnan(channel)) # Use a mask to mark the NaNs
+	channel2 = channel[channel!=0]
 
 	# compute the clips
 	if clip > 0:
-		sample_LL, sample_UL = findMinMaxClipValues(channel, clip)
+		sample_LL, sample_UL = findMinMaxClipValues(channel2, clip)
 	else:
 		sample_LL = channel.min()
 		sample_UL = channel.max()
@@ -291,8 +313,7 @@ def samplesToGrayImageLogarithmic(samples, invert, clip):
 	sample_LL = 0 
 	sample_UL = 0
 	conv_01_99 = 1
-	# channelMin = 0
-	# channelMax = 0
+
 	#create numpy arrays so we can compute stats
 	channel = np.array(samples)   
 
