@@ -8,6 +8,7 @@ This is going to use the standard libraries from python, ie NOT use numpy, gsgli
 * make a las file of RGB where each color is an intensity
 
 # DONE
+* mask empty areas from waterfall plots
 * implement intensity clip
 * implement range clip
 * implement angular clips
