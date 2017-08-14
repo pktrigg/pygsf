@@ -17,7 +17,7 @@
 				"WaitOnNormalExit",
 				"RedirectOutput"
 			],
-					"args": ["-i", "C:/development/python/sample_subset.gsf", "-arc", "C:/development/python/waterfall/AngularResponseCurve_.csv"\
+					"args": ["-i", "C:/development/python/sample_subset.gsf"\
 		},
 	]
 }

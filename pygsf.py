@@ -47,6 +47,10 @@ SNIPPET_MEAN5DB 						= 4  # extract the mean of all snippets within 5dB of the 
 # the various frequencies we support in the R2Sonic multispectral files
 ARCIdx = {100000: 0, 200000: 1, 400000: 2}
 
+# the rejection flags used by this software
+REJECT_CLIP = -1
+REJECT_RANGE= -2
+REJECT_INTENSITY= -4
 ###############################################################################
 def main():
 
@@ -187,6 +191,8 @@ def testreader():
 		if recordidentifier == SWATH_BATHYMETRY:
 			datagram.read()
 			# print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d Serial %d" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency, datagram.serialnumber))
+
+			datagram.clippolar(-60, 60)
 			pingcount += 1
 	print("Duration %.3fs" % (time.time() - start_time )) # time the process
 	print ("PingCount:", pingcount)
@@ -278,13 +284,45 @@ class SWATH_BATHYMETRY_PING :
 		self.INTENSITY_SERIES_ARRAY = []
 		self.SNIPPET_SERIES_ARRAY = []
 		self.snippettype = SNIPPET_MAX
-
+		self.numbeams = 0
+###############################################################################
 	def __str__(self):
 		'''
 		pretty print this class
 		'''
 		return pprint.pformat(vars(self))
+###############################################################################
+	def clippolar(self, leftclipdegrees, rightclipdegrees):
+		'''sets the processing flags to rejected if the beam angle is beyond the clip parameters'''
+		if self.numbeams == 0:
+			return
+		for i, s in enumerate(self.BEAM_ANGLE_ARRAY):
+			if (s <= leftclipdegrees) or (s >= rightclipdegrees):
+				self.QUALITY_FACTOR_ARRAY[i] += REJECT_CLIP
+				self.MEAN_REL_AMPLITUDE_ARRAY[i] = 0
+				self.ACROSS_TRACK_ARRAY[i] = 0
+		return
+###############################################################################
+	def cliptwtt(self, minimumtraveltime=0.0):
+		'''sets the processing flags to rejected if the two way travel time is less than the clip parameters'''
+		if self.numbeams == 0:
+			return
+		for i, s in enumerate(self.TRAVEL_TIME_ARRAY):
+			if (s <= minimumtraveltime):
+				self.QUALITY_FACTOR_ARRAY[i] += REJECT_RANGE
+		return
 
+###############################################################################
+	def clipintensity(self, minimumintenisty=0.0):
+		'''sets the processing flags to rejected if the two way travel time is less than the clip parameters'''
+		if self.numbeams == 0:
+			return
+		for i, s in enumerate(self.MEAN_REL_AMPLITUDE_ARRAY):
+			if (s <= minimumintenisty):
+				self.QUALITY_FACTOR_ARRAY[i] += REJECT_INTENSITY
+		return
+
+###############################################################################
 	def read(self, headeronly=False):
 		self.fileptr.seek(self.offset + self.hdrlen, 0)   # move the file pointer to the start of the record so we can read from disc			  
 
@@ -521,12 +559,16 @@ class SWATH_BATHYMETRY_PING :
 		H0_VTX_Offset = self.vtxoffset / 100  # -21.0 / 100 #????  Ask Norm
 
 		for i in range(self.numbeams):
+			if self.BEAM_FLAGS_ARRAY[i] < 0:
+				continue
 			S1_angle = self.BEAM_ANGLE_ARRAY[i] #angle in degrees
 			S1_twtt = self.TRAVEL_TIME_ARRAY[i]
 			S1_range = math.sqrt((self.ACROSS_TRACK_ARRAY[i] ** 2) + (self.ALONG_TRACK_ARRAY[i] ** 2))
-			S1_uPa = max(0.01, samplearray[i]) #trap impossible values
-			adjusted = self.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
-			samplearray[i] = adjusted
+			# S1_uPa = max(0.01, samplearray[i]) #trap impossible values
+			if samplearray[i] != 0:
+				S1_uPa = samplearray[i] #trap impossible values
+				adjusted = self.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
+				samplearray[i] = adjusted
 		return samplearray
 
 ###############################################################################

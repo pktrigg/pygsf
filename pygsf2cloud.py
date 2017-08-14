@@ -11,7 +11,6 @@ import math
 # from matplotlib import pyplot as plt
 # from matplotlib import cm
 import numpy as np
-import numpy.ma as ma
 from PIL import Image,ImageDraw,ImageFont, ImageOps, ImageChops, ImageFilter
 import pygsf
 import time
@@ -60,16 +59,16 @@ def main():
 			print ("file not found:", filename)
 			exit()
 
-		# xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
-		# print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
+		xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
+		print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
 		# pkpk tmp
-		beamCount = 512
-		xResolution = 0.4
-		yResolution = 0.27
-		leftExtent = -62.22
-		rightExtent = 59.23
-		distanceTravelled = 488.05
-		navigation = []
+		# beamCount = 512
+		# xResolution = 0.4
+		# yResolution = 0.27
+		# leftExtent = -62.22
+		# rightExtent = 59.23
+		# distanceTravelled = 488.05
+		# navigation = []
 		# pkpk tmp
 		if beamCount == 0:
 			print ("No data to process, skipping empty file")
@@ -84,7 +83,6 @@ def main():
 				bc *= zoom 
 		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), args.invert, args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation, applyarc, arc)
 
-###############################################################################
 def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[], applyarc=False, arc=[]):
 	print ("Processing file: ", filename)
 
@@ -109,9 +107,9 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, inv
 			datagram.scalefactors = scalefactors	
 			datagram.snippettype = pygsf.SNIPPET_NONE
 			datagram.read()
+			datagram.clippolar(-60,60)
 			datagram.cliptwtt(0)
 			datagram.clipintensity(0)
-			datagram.clippolar(-60,60)
 			
 			samplearray = datagram.R2Soniccorrection(perBeam)
 			idx = pygsf.ARCIdx[datagram.frequency]
@@ -129,17 +127,17 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, inv
 						s2.append(samplearray[i] - arc[arcIndex][idx])
 					else:
 						s2.append(samplearray[i])
-
-			# we need to mask the zero's out or we get strange images.
-			xt = ma.masked_equal(xt, 0.0)
+			# xp = np.array(datagram.ACROSS_TRACK_ARRAY) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
 			xp = np.array(xt) #the x distance for the beams of a ping.  we could possibly use the real values here instead todo
 			fp = np.array(s2) #the Backscatter list as a numpy array
-			fp = ma.masked_equal(fp, 0.0)
+			# fp = np.abs(np.array(samplearray)) #the Backscatter list as a numpy array
 			x = np.linspace(leftExtent, rightExtent, outputResolution) #the required samples needs to be about the same as the original number of samples, spread across the across track range
 			newBackscatters = np.interp(x, xp, fp, left=0.0, right=0.0)
 			
 			if datagram.frequency == 100000:
 				waterfall100.append(np.asarray(newBackscatters))			
+				# samplearray = np.asarray(newBackscatters)
+				# samplearray = xt
 				# print ("xt %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f" %(samplearray[0], samplearray[10], samplearray[20], samplearray[30], samplearray[40], samplearray[50], samplearray[60], samplearray[70], samplearray[80], samplearray[90], samplearray[100], samplearray[110], samplearray[120], samplearray[130], samplearray[140], samplearray[150], samplearray[160], samplearray[170], samplearray[180], samplearray[190],))
 			if datagram.frequency == 200000:
 				waterfall200.append(np.asarray(newBackscatters))			
@@ -148,8 +146,8 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, inv
 
 			recCount += 1
 			# temp to make things faster
-			if recCount == 200:
-				break
+			# if recCount == 200:
+			# 	break
 
 			if datagram.currentRecordDateTime().timestamp() % 30 == 0:
 				percentageRead = (recCount / totalrecords) 
@@ -169,18 +167,17 @@ def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1
 	# we have all data loaded, so now lets make a waterfall image...
 	#---------------------------------------------------------------	
 	print ("Correcting for vessel speed...")
-	npGrid = np.array(waterfall)
-	# npGrid = ma.masked_equal(npGrid, 0)
-
 	# we now need to interpolate in the along track direction so we have apprximate isometry
+	npGrid = np.array(waterfall)
+
 	stretchedGrid = np.empty((0, int(len(npGrid) * isoStretchFactor)))	
 	for column in npGrid.T:
 		y = np.linspace(0, len(column), len(column) * isoStretchFactor) #the required samples
 		yp = np.arange(len(column)) 
 		w2 = np.interp(y, yp, column, left=0.0, right=0.0)
 		# we can run a median filter to smooth it out a little, but maybe better in PIL? pkpk
-		# w2 = geodetic.medfilt(w2,3)
-		# w2 = geodetic.medfilt(w2,7)
+		w2 = geodetic.medfilt(w2,3)
+		w2 = geodetic.medfilt(w2,7)
 		stretchedGrid = np.append(stretchedGrid, [w2],axis=0)
 	npGrid = stretchedGrid
 	# npGrid = np.ma.masked_values(npGrid, 0.0)
@@ -225,10 +222,8 @@ def findMinMaxClipValues(channel, clip):
 	print ("Clipping data with an upper and lower percentage of:", clip)
 	# compute a histogram of teh data so we can auto clip the outliers
 	# cleanChannel = ~np.isnan(channel)
-	# channel.mask = cleanChannel
 	bins = np.arange(np.floor(channel.min()),np.ceil(channel.max()))
 	hist, base = np.histogram(channel, bins=bins, density=1)	
-	
 
 	# instead of spreading across the entire data range, we can clip the outer n percent by using the cumsum.
 	# from the cumsum of histogram density, we can figure out what cut off sample amplitude removes n % of data
@@ -285,40 +280,30 @@ def samplesToGrayImage(samples, invert, clip):
 	conv_01_99 = 1
 	
 	#create numpy arrays so we can compute stats
-	channel = samples
-	# channel[channel == 0] = np.nan
-	# channel.set_fill_value(np.nan)
-	# channel = np.array(samples)
-	# channel2 = channel[channel!=0]
-	channel2 = ma.masked_equal(channel, 0.0)
-	# channel=channel2
-	# channelmask.set_fill_value(np.nan)
+	channel = np.array(samples)
+	channel2 = channel[channel!=0]
+
 	# compute the clips
 	if clip > 0:
 		sample_LL, sample_UL = findMinMaxClipValues(channel2, clip)
 	else:
-		sample_LL = channel2.min()
-		sample_UL = channel2.max()
+		sample_LL = channel.min()
+		sample_UL = channel.max()
 		print ("sample range LL %.3f UL %.3f" % (sample_LL, sample_UL))
 	# this scales from the range of image values to the range of output grey levels
 	if (sample_UL - sample_LL) is not 0:
 		conv_01_99 = ( gray_UL - gray_LL ) / ( sample_UL - sample_LL )
 		print ("sample to gray conversion scale", conv_01_99)
-	
 	#we can expect some divide by zero errors, so suppress 
 	np.seterr(divide='ignore')
-	channel2 = np.subtract(channel2, sample_LL)
-	channel4 = np.multiply(channel3, conv_01_99)
+	channel = np.subtract(channel, sample_LL)
+	channel = np.multiply(channel, conv_01_99)
 	if invert:
-		channel5 = np.subtract(gray_UL, channel4)
+		channel = np.subtract(gray_UL, channel)
 	else:
-		channel5 = np.add(gray_LL, channel4)
-	# ch = channel[channelmask.mask()] = 0
-	channel5 = np.add(0, channel5)
-
-	image = Image.fromarray(channel5).convert('L')
-	image2 = image[channel5.mask.astype(int)] = 255
-	return image2
+		channel = np.add(gray_LL, channel)
+	image = Image.fromarray(channel).convert('L')
+	return image
 
 ###################################
 # gray_LL = lower limit of grey scale
