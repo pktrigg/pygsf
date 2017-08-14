@@ -285,6 +285,8 @@ class SWATH_BATHYMETRY_PING :
 		self.SNIPPET_SERIES_ARRAY = []
 		self.snippettype = SNIPPET_MAX
 		self.numbeams = 0
+		self.time = 0
+		self.pingnanotime = 0
 ###############################################################################
 	def __str__(self):
 		'''
@@ -884,7 +886,7 @@ class GSFREADER:
 			numberofbytes, recordidentifier, datagram = self.readDatagram()
 			if recordidentifier == SWATH_BATHYMETRY:
 				datagram.read(True)
-				navigation.append([datagram.time, datagram.longitude, datagram.latitude])
+				navigation.append([datagram.time + datagram.pingnanotime/1000000000.0, datagram.longitude, datagram.latitude])
 		self.fileptr.seek(curr, 0)
 		print ("Navigation records loaded:", len(navigation))
 		return navigation
