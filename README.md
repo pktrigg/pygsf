@@ -4,10 +4,13 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
+* 1942 becomes corrugated when we apply the ARC.  no problem if not applied
 * make a las file for each frequency where intensity is the amplitude data
 * make a las file of RGB where each color is an intensity
 
 # DONE
+* set grey scale range from 0 to 255 levels of gray so we user the full spectrum
+* default clip is set to 0.3%, ie 0.15 each side.  This represents a clip to 3*SD
 * mask empty areas from waterfall plots
 * implement intensity clip
 * implement range clip

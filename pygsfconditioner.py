@@ -80,6 +80,8 @@ def main():
 		# use a dictionary so we can easily find the correct array by frequency
 		beamPointingAngles = []
 		transmitSector = []
+		perbeam = True #set to true for perbeam processing, False for snippet provessing
+
 
 	for filename in matches:
 		if dump:
@@ -90,7 +92,7 @@ def main():
 		if extractBackscatter:
 			outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve_.csv")
 			outFileName = createOutputFileName(outFileName)
-			ARC = extractARC(filename, ARC, pygsf.ARCIdx, beamPointingAngles, transmitSector)
+			ARC = extractARC(filename, ARC, pygsf.ARCIdx, beamPointingAngles, transmitSector, perbeam)
 			# ARC, beamPointingAngles, transmitSector = extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector)
 
 		update_progress("Processed: %s (%d/%d)" % (filename, fileCounter, len(matches)), (fileCounter/len(matches)))
@@ -193,7 +195,7 @@ def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector, perBea
 		'''to do this, we need to take into account the take off angle of each beam'''
 		if recordidentifier == pygsf.SWATH_BATHYMETRY:
 			datagram.scalefactors = r.scalefactors	
-			datagram.snippettype = pygsf.SNIPPET_NONE
+			datagram.snippettype = pygsf.SNIPPET_NONE  #define the snippet algorithm here.
 			datagram.read()
 
 			# we have an R2 system, so we can apply a backscatter correction algorithm
