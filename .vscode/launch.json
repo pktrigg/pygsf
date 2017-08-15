@@ -17,7 +17,7 @@
 				"WaitOnNormalExit",
 				"RedirectOutput"
 			],
-					"args": ["-i", "C:/development/python/sample_subset.gsf"\
+					"args": ["-i", "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 123110 - 0002-2026_1.gsf"\
 		},
 	]
 }

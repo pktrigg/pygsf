@@ -17,6 +17,12 @@ import random
 from datetime import datetime
 from datetime import timedelta
 
+# for testing only...
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+
 #/* The high order 4 bits are used to define the field size for this array */
 GSF_FIELD_SIZE_DEFAULT  = 0x00  #/* Default values for field size are used used for all beam arrays */
 GSF_FIELD_SIZE_ONE	  = 0x10  #/* value saved as a one byte value after applying scale and offset */
@@ -176,11 +182,20 @@ def testreader():
 	sample read script so we can see how to use the code
 	'''
 	start_time = time.time() # time the process so we can keep it quick
-	filename = "C:/development/python/sample_subset.gsf"
+	filename = "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 123110 - 0002-2026_1.gsf"
 	pingcount = 0
 	# create a GSFREADER class and pass the filename
 	r = GSFREADER(filename)
-	r.loadnavigation()
+	# r.loadnavigation()
+
+
+	f1 = plt.figure()
+	# f2 = plt.figure()
+	# f3 = plt.figure()
+
+	ax1 = f1.add_subplot(111)
+	# ax2 = f2.add_subplot(111)
+	# ax3 = f3.add_subplot(111)
 
 	while r.moreData():
 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
@@ -190,9 +205,27 @@ def testreader():
 
 		if recordidentifier == SWATH_BATHYMETRY:
 			datagram.read()
-			# print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d Serial %d" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency, datagram.serialnumber))
+			datagram.snippettype = SNIPPET_NONE
+			print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d Serial %s" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency, datagram.serialnumber))
 
-			datagram.clippolar(-60, 60)
+			bs = []
+			for s in datagram.MEAN_REL_AMPLITUDE_ARRAY:
+				if s != 0:
+					bs.append(20 * math.log10(s) - 100)
+				else:
+					bs.append(0)
+
+			# bs = [20 * math.log10(s) - 100 for s in datagram.MEAN_REL_AMPLITUDE_ARRAY]
+			if datagram.frequency == 100000:
+				samplearray = datagram.R2Soniccorrection()
+				if len(bs) > 0:
+					plt.plot(datagram.BEAM_ANGLE_ARRAY, bs, linewidth=0.25, color='blue')
+					plt.ylim([-60,-5])
+					plt.xlim([-60,60])
+					# ax3.plot(datagram.BEAM_ANGLE_ARRAY, datagram.ALONG_TRACK_ARRAY)
+					plt.pause(0.001)
+
+			# datagram.clippolar(-60, 60)
 			pingcount += 1
 	print("Duration %.3fs" % (time.time() - start_time )) # time the process
 	print ("PingCount:", pingcount)
@@ -281,7 +314,7 @@ class SWATH_BATHYMETRY_PING :
 		self.VERTICAL_ERROR_ARRAY = []
 		self.HORIZONTAL_ERROR_ARRAY = []
 		self.SECTOR_NUMBER_ARRAY = []
-		self.INTENSITY_SERIES_ARRAY = []
+		# self.INTENSITY_SERIES_ARRAY = []
 		self.SNIPPET_SERIES_ARRAY = []
 		self.snippettype = SNIPPET_MAX
 		self.numbeams = 0
@@ -404,7 +437,7 @@ class SWATH_BATHYMETRY_PING :
 				self.readarray(self.VERTICAL_ERROR_ARRAY, scale, offset, datatype)
 			elif subrecord_id == 21: 
 				before = self.fileptr.tell()
-				self.readintensityarray(self.INTENSITY_SERIES_ARRAY, self.SNIPPET_SERIES_ARRAY, scale, offset, datatype, self.snippettype)
+				self.readintensityarray(self.SNIPPET_SERIES_ARRAY, scale, offset, datatype, self.snippettype)
 				if subrecord_size % 4 > 0:
 					self.fileptr.seek(4 - (subrecord_size % 4), 1) #pkpk we should not need this!!!
 			elif subrecord_id == 22: 
@@ -465,7 +498,7 @@ class SWATH_BATHYMETRY_PING :
 		# print (self.scalefactors)
 		return
 
-	def readintensityarray(self, values, snippets, scale, offset, datatype, snippettype):
+	def readintensityarray(self, snippets, scale, offset, datatype, snippettype):
 		''' 
 		read the time series intensity array type 21 subrecord
 		'''
@@ -541,7 +574,7 @@ class SWATH_BATHYMETRY_PING :
 ###############################################################################
 	def R2Soniccorrection(self, perBeam=True):
 		'''entry point for r2sonic backscatter TVG, Gain and footprint correction algorithm'''
-
+		# perBeam = True
 		if perBeam:
 			samplearray = self.MEAN_REL_AMPLITUDE_ARRAY
 		else:
@@ -551,8 +584,8 @@ class SWATH_BATHYMETRY_PING :
 		H0_TxPower = self.transmitsourcelevel
 		H0_SoundSpeed = self.soundspeed
 		H0_RxAbsorption = self.absorptioncoefficient
-		H0_TxBeamWidthVert = math.radians(self.beamwidthvertical)
-		H0_TxBeamWidthHoriz = math.radians(self.beamwidthhorizontal)
+		H0_TxBeamWidthVert = self.beamwidthvertical
+		H0_TxBeamWidthHoriz = self.beamwidthhorizontal
 		H0_TxPulseWidth = self.pulsewidth
 		H0_RxSpreading = self.receiverspreadingloss
 		H0_RxGain = self.receivergain
@@ -566,14 +599,22 @@ class SWATH_BATHYMETRY_PING :
 			S1_range = math.sqrt((self.ACROSS_TRACK_ARRAY[i] ** 2) + (self.ALONG_TRACK_ARRAY[i] ** 2))
 			# S1_uPa = max(0.01, samplearray[i]) #trap impossible values
 			if samplearray[i] != 0:
-				S1_uPa = samplearray[i] #trap impossible values
-				adjusted = self.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
+				S1_uPa = samplearray[i]
+
+				# adjusted = 0				
+				# a test on request from Norm....
+				adjusted = 20 * math.log10(S1_uPa) - 100
+				# the formal adjustment from Norm Campbell...
+				# adjusted = self.R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset)
+				
 				samplearray[i] = adjusted
 		return samplearray
 
 ###############################################################################
 	def R2Sonicbackscatteradjustment(self, S1_angle, S1_twtt, S1_range, S1_Magnitude, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset):
 		'''R2Sonic backscatter correction algorithm from Norm Camblell at CSIRO.  This is a port from F77 fortran code, and has been tested and confirmed to provide identical results'''
+		# pkpkpk
+
 		# iot = 7
 		# print("angle", S1_angle)
 
@@ -729,8 +770,8 @@ class SWATH_BATHYMETRY_PING :
 		self.frequency = raw[7] / 1.0e3
 		self.transmitsourcelevel = raw[8] / 1.0e2
 		self.pulsewidth = raw[9] / 1.0e7
-		self.beamwidthvertical = raw[10] / 1.0e6
-		self.beamwidthhorizontal = raw[11] / 1.0e6
+		self.beamwidthvertical = math.radians(raw[10] / 1.0e6)
+		self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6)
 
 		transmitsteeringvertical = raw[12] / 1.0e6
 		transmitsteeringhorizontal = raw[13] / 1.0e6
