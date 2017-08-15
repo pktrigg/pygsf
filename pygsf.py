@@ -612,92 +612,51 @@ class SWATH_BATHYMETRY_PING :
 ###############################################################################
 	def R2Sonicbackscatteradjustment(self, S1_angle, S1_twtt, S1_range, S1_Magnitude, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset):
 		'''R2Sonic backscatter correction algorithm from Norm Camblell at CSIRO.  This is a port from F77 fortran code, and has been tested and confirmed to provide identical results'''
-		# pkpkpk
-
-		# iot = 7
-		# print("angle", S1_angle)
+		# the following code uses the names for the various packets as listed in the R2Sonic SONIC 2024 Operation Manual v6.0
+		# so names beginning with
+		# H0_   denote parameters from the BATHY (BTH) and Snippet (SNI) packets from section H0
+		# R0_   denote parameters from the BATHY (BTH) packets from section R0
+		# S1_   denote parameters from the Snippet (SNI) packets from section S1
+		# names beginning with
+		# z_	denote values derived from the packet parameters
+		# the range, z_range_m, can be found from the two-way travel time (and scaling factor), and the sound speed, as follows:
 
 		one_rad = 57.29577951308232
-
 		S1_angle_rad = S1_angle / one_rad
-
-		# c	   the following code uses the names for the various packets as listed in the R2Sonic SONIC 2024 Operation Manual v6.0
-		# c	   so names beginning with
-		# c	   H0_   denote parameters from the BATHY (BTH) and Snippet (SNI) packets from section H0
-		# c	   R0_   denote parameters from the BATHY (BTH) packets from section R0
-		# c	   S1_   denote parameters from the Snippet (SNI) packets from section S1
-		# c	   names beginning with
-		# c	   z_	denote values derived from the packet parameters
-		# c	   the range, z_range_m, can be found from the two-way travel time (and scaling factor), and the sound speed, as follows:
-
 		z_one_way_travel_secs = S1_twtt / 2.0
-
-		# print("one-way travel", z_one_way_travel_secs)
-
-		# z_range_m = z_one_way_travel_secs * H0_SoundSpeed
 		z_range_m = z_one_way_travel_secs * self.soundspeed
-		# z_range_m = S1_range
 
-		# there is a range of zero, so this is an invalid beam, so quite
+		# there is a range of zero, so this is an invalid beam, so quit
 		if z_range_m == 0:
 			return 0
 
-		# print("range", z_range_m)
-
-		# c	   according to Lurton, Augustin and Le Bouffant (Femme 2011), the basic Sonar equation is
-		# c	   received_level = source_level
-		# c					  - 2 * transmission_loss
-		# c					  + target_strength
-		# c					  + receiver_gain
-		# c	   note that this last term does not always appear explicitly in the sonar equation
-		# c	   more specifically:
-		# c	   transmission_loss = H0_RxAbsorption * range_m + 40 log10 ( range_m )
-		# c	   target_strength = backscatter_dB_m + 10 log10 ( z_area_of_insonification )
-		# c	   receiver_gain = TVG + H0_RxGain
-		# c	   the components of the Sonar equation can be calculated as follows:
-		# c	   u16 S1_Magnitude[S1_Samples]; // [micropascals] = S1_Magnitude[n]
-	
-		# print("received level", S1_Magnitude)
+		# according to Lurton, Augustin and Le Bouffant (Femme 2011), the basic Sonar equation is
+		# received_level = source_level - 2 * transmission_loss + target_strength + receiver_gain
+		# note that this last term does not always appear explicitly in the sonar equation
+		# more specifically:
+		# transmission_loss = H0_RxAbsorption * range_m + 40 log10 ( range_m )
+		# target_strength = backscatter_dB_m + 10 log10 ( z_area_of_insonification )
+		# receiver_gain = TVG + H0_RxGain
+		# the components of the Sonar equation can be calculated as follows:
+		# u16 S1_Magnitude[S1_Samples]; // [micropascals] = S1_Magnitude[n]
 
 		z_received_level = 20.0 * math.log10 ( S1_Magnitude )
-
-		# print("20 log10 received level", z_received_level)
-
-		# c	   f32 H0_TxPower; // [dB re 1 uPa at 1 meter]
-
-		z_source_level = H0_TxPower
-
-		# print("source level", z_source_level)
-
-		# c	   f32 H0_RxAbsorption; // [dB per kilometer]
-
-		z_transmission_loss_t1 = 2.0 * H0_RxAbsorption * z_range_m / 1000.0
+		z_source_level = H0_TxPower # [dB re 1 uPa at 1 meter]
+		z_transmission_loss_t1 = 2.0 * H0_RxAbsorption * z_range_m / 1000.0  # [dB per kilometer]
 		z_transmission_loss_t2 = 40.0 * math.log10(z_range_m)
-		# z_transmission_loss_t2 = 40.0 * math.log10 ( z_range_m ) #norms version with log10
 		z_transmission_loss = z_transmission_loss_t1 + z_transmission_loss_t2
 	
-		# print("transmission loss t1", z_transmission_loss_t1)
-		# print("transmission loss t2", z_transmission_loss_t2)
-		# print("transmission loss", z_transmission_loss)
-
-		# c	   for oblique angles
-		# c	   area_of_insonification = along_track_beam_width * range * sound_speed * pulse_width / 2 sin ( incidence_angle)
-		# c	   for normal incidence
-		# c	   area_of_insonification = along_track_beam_width * across_track_beam_width * range ** 2
+		# for oblique angles
+		# area_of_insonification = along_track_beam_width * range * sound_speed * pulse_width / 2 sin ( incidence_angle)
+		# for normal incidence
+		# area_of_insonification = along_track_beam_width * across_track_beam_width * range ** 2
 
 		sin_S1_angle = math.sin ( abs ( S1_angle_rad ) )
-		# c	 if ( abs ( S1_angle ) < 30.001 ) then
-			
 		z_area_of_insonification_nml = H0_TxBeamWidthVert * H0_TxBeamWidthHoriz * z_range_m **2 
 		z_area_of_insonification_obl = z_area_of_insonification_nml
 		
 		if ( abs ( S1_angle ) >= 0.001 ):
 			z_area_of_insonification_obl = H0_TxBeamWidthVert * z_range_m * H0_SoundSpeed * H0_TxPulseWidth / ( 2.0 * sin_S1_angle )
-			# c	   f32 H0_TxBeamwidthVert; // [radians]
-			# c	   f32 H0_TxBeamwidthHoriz; // [radians]
-
-		# print("area of insonification", z_area_of_insonification_nml)
-		# print("area of insonification obl", z_area_of_insonification_obl)
 
 		if ( abs ( S1_angle ) < 25. ):
 			z_area_of_insonification = z_area_of_insonification_nml
@@ -711,57 +670,26 @@ class SWATH_BATHYMETRY_PING :
 		else:
 			z_area_of_insonification = z_area_of_insonification_obl
 
-		# z_area_inson = 10. * math.log10 ( z_area_of_insonification )
-
-		# print("10 long10 area of inson", z_area_inson)
-
-		# c	   note that the first equation refers to the along-track beam width
-		# c	   the R2Sonic Operation Manual refers on p21 to the Beamwidth - Along Track -- moreover, for the 2024, the Beamwidth Along Track is twice
-		# c	   the Beamwidth Across Track
-		# c	   for the observed values on the BTH datagrams, the values given are 
-		# c	   H0_TxBeamWidthVert = 0.0174533, and H0_TxBeamWidthHoriz = 0.0087266,
-		# c	   so I have taken H0_TxBeamWidthVert to be equivalent to the along_track_beam_width
-		# c	   according to the R2Sonic Operation Manual in Section 5.6.3 on p66, the TVG equation is
-		# c	   2 * range_m / 1000 * H0_RxAbsorption + H0_RxSpreading * log10 ( range_m ) + H0_RxGain
-		# c	   f32 H0_RxSpreading; // [dB (times log range in meters)]
-		# c	   f32 H0_RxAbsorption; // [dB per kilometer]
-		# c	   z_transmission_loss_t1 =  2. * H0_RxAbsorption * z_range_m / 1000.
-		# c	   z_transmission_loss_t2 = 40. * alog10 ( z_range_m )
+		# note that the first equation refers to the along-track beam width
+		# the R2Sonic Operation Manual refers on p21 to the Beamwidth - Along Track -- moreover, for the 2024, the Beamwidth Along Track is twice
+		# the Beamwidth Across Track
+		# for the observed values on the BTH datagrams, the values given are 
+		# H0_TxBeamWidthVert = 0.0174533, and H0_TxBeamWidthHoriz = 0.0087266,
+		# so I have taken H0_TxBeamWidthVert to be equivalent to the along_track_beam_width
+		# according to the R2Sonic Operation Manual in Section 5.6.3 on p66, the TVG equation is
+		# 2 * range_m / 1000 * H0_RxAbsorption + H0_RxSpreading * log10 ( range_m ) + H0_RxGain
+		# f32 H0_RxSpreading; // [dB (times log range in meters)]
+		# f32 H0_RxAbsorption; // [dB per kilometer]
+		# z_transmission_loss_t1 =  2. * H0_RxAbsorption * z_range_m / 1000.
+		# z_transmission_loss_t2 = 40. * alog10 ( z_range_m )
 
 		z_receiver_gain_t1 = 2. * H0_RxAbsorption * z_range_m / 1000.
 		z_receiver_gain_t2 = H0_RxSpreading * math.log10 ( z_range_m )
-
-		# c	   f32 H0_RxGain; // [multiply by two for relative dB]
-
-		z_receiver_gain_t3 = 2. * H0_RxGain
+		z_receiver_gain_t3 = 2. * H0_RxGain  # [multiply by two for relative dB] as per email from Beaudoin
 		# z_receiver_gain_t3 = H0_RxGain
 
-		z_receiver_gain = z_receiver_gain_t1 + z_receiver_gain_t2 + z_receiver_gain_t3 #- 100.0
-
-		# print("receiver gain t1", z_receiver_gain_t1)
-		# print("receiver gain t2", z_receiver_gain_t2)
-		# print("receiver gain t3", z_receiver_gain_t3)
-		# print("receiver gain", z_receiver_gain)
-		
-
-		# power = z_source_level
-		# power_error = H0_VTX_Offset
-		# A = z_area_of_insonification
-		# TVG_real_time = max(min(4,H0_RxSpreading * math.log10(z_range_m) + (2 * H0_RxAbsorption * z_range_m /1000 + H0_RxGain)),83)
-		# head_bias = 0
-
-		# from beuadoin
-		#corrector =  - power - power_error - 10 log10 ( A ) - TVG_real_time + 40 log R + 2 alpha R / 1000 + 100 + head_bias
-		# corrector = - power - power_error - (10.0 * math.log10(A)) - TVG_real_time + (40 * math.log10(z_range_m)) + (2 * H0_RxAbsorption * z_range_m / 1000 + 100 + head_bias)
-
-		# BS = 20 log10 ( dn ) + corrector
-		# BS = (20.0 * math.log10 (S1_Magnitude)) + corrector
-
-
-		# backscatter_dB_m = z_received_level - z_source_level + z_transmission_loss - (10.0 * math.log10 ( z_area_of_insonification )) - z_receiver_gain - H0_VTX_Offset + 100.0
+		z_receiver_gain = z_receiver_gain_t1 + z_receiver_gain_t2 + z_receiver_gain_t3
 		backscatter_dB_m = z_received_level - z_source_level + z_transmission_loss - (10.0 * math.log10 ( z_area_of_insonification )) - z_receiver_gain - H0_VTX_Offset + 100.0
-
-		# print("adjusted backscatter", backscatter_dB_m)
 
 		return backscatter_dB_m
 ###############################################################################
