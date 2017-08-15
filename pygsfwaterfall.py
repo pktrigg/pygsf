@@ -209,6 +209,8 @@ def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1
 		meanBackscatter = np.average(waterfall)
 		waterfallPixelSize = (abs(rightExtent) + abs(rightExtent)) /  img.width
 		# print ("Mean Backscatter %.2f" % meanBackscatter)
+		minBs=0
+		maxBs=0
 		imgLegend = createLegend(filename, img.width, (abs(leftExtent)+abs(rightExtent)), distanceTravelled, waterfallPixelSize, minBS, maxBS, meanBackscatter, colorMap)
 		img = spliceImages(img, imgLegend)
 
