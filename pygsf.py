@@ -17,6 +17,7 @@ import random
 from datetime import datetime
 from datetime import timedelta
 from statistics import mean
+import mmap
 
 # for testing only...
 import matplotlib.pyplot as plt
@@ -69,7 +70,7 @@ def testreader():
 	sample read script so we can see how to use the code
 	'''
 	start_time = time.time() # time the process so we can keep it quick
-	filename = "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 125110 - 0001-2026_1.gsf"
+	filename = "C:/development/python/sample_subset.gsf"
 	pingcount = 0
 	# create a GSFREADER class and pass the filename
 	r = GSFREADER(filename)
@@ -846,8 +847,9 @@ class GSFREADER:
 		if not os.path.isfile(filename):
 			print ("file not found:", filename)
 		self.fileName = filename
-		self.fileptr = open(filename, 'rb')		
 		self.fileSize = os.path.getsize(filename)
+		f = open(filename, 'r+b')		
+		self.fileptr = mmap.mmap(f.fileno(), 0)
 		self.hdrfmt = ">LL"
 		self.hdrlen = struct.calcsize(self.hdrfmt)
 		self.scalefactors = []

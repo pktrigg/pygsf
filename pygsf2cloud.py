@@ -77,14 +77,15 @@ def convert(filename, odir):
 		# recDate = datagram.currentRecordDateTime()
 		localradius = calculateradiusFromLatitude(datagram.latitude)
 
-		datagram.scalefactors = scalefactors	
+		datagram.scalefactors = scalefactors
+		datagram.perbeam = True
 		datagram.snippettype = pygsf.SNIPPET_NONE
 		datagram.read()
 		datagram.cliptwtt(0)
 		datagram.clipintensity(0)
 		datagram.clippolar(-60,60)
 		
-		samplearray = datagram.R2Soniccorrection(perBeam)
+		samplearray = datagram.R2Soniccorrection()
 
 		# for each beam in the ping, compute the real world position
 		for i in range(len(datagram.DEPTH_ARRAY)):
@@ -104,7 +105,8 @@ def convert(filename, odir):
 			writer.x.append(x)
 			writer.y.append(y)
 			writer.z.append(datagram.DEPTH_ARRAY[i])
-			writer.intensity.append(samplearray[i])
+			writer.intensity.append(max(0,int(min(255,abs(samplearray[i])))))
+			writer.red.append(max(0,int(min(255,abs(samplearray[i])))))
 			recCount = recCount + 1
 
 	# before we write any points, we need to compute the bounding box, scale and offsets
