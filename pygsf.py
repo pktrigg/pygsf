@@ -69,11 +69,11 @@ def main():
 # 	'''
 # 	This test code confirms the results are in alignment with those from Norm Campbell at CSIRO who kindly provided the code in F77
 # 	'''
-# 	# adjusted backscatter          -38.6
-# 	# adjusted backscatter          -47.6
-# 	# adjusted backscatter          -27.5
-# 	# adjusted backscatter          -36.6
-# 	# adjusted backscatter          -35.5
+# 	# adjusted backscatter		  -38.6
+# 	# adjusted backscatter		  -47.6
+# 	# adjusted backscatter		  -27.5
+# 	# adjusted backscatter		  -36.6
+# 	# adjusted backscatter		  -35.5
 
 # 	S1_angle = -58.0
 # 	S1_twtt = 0.20588
@@ -862,10 +862,15 @@ class SWATH_BATHYMETRY_PING :
 
 		self.frequency = raw[7] / 1.0e3
 		self.transmitsourcelevel = raw[8] / 1.0e2
-		self.pulsewidth = raw[9] / 1.0e7
-		self.beamwidthvertical = math.radians(raw[10] / 1.0e6)
-		self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6)
+			self.pulsewidth = raw[9] / 1.0e7
 
+		#apply scaling as per email from Beaudoin https://jira.qps.nl/browse/SFM-2857
+		#self.beamwidthvertical = math.radians(raw[10] / 1.0e6
+		#self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6		
+		self.beamwidthvertical = math.radians(raw[10] / 1.0e6 * (400000 / self.frequency))
+		self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6 * (400000 / self.frequency))
+
+			
 		transmitsteeringvertical = raw[12] / 1.0e6
 		transmitsteeringhorizontal = raw[13] / 1.0e6
 		transmitinfo = raw[14]
@@ -876,7 +881,7 @@ class SWATH_BATHYMETRY_PING :
 		receiverrange = raw[18] / 1.0e5
 		self.receivergain = raw[19] / 1.0e2
 		self.receiverspreadingloss = raw[20] / 1.0e3
-		self.absorptioncoefficient = raw[21]/ 1.0e3
+		self.absorptioncoefficient = raw[21]/ 1.0e3 #dB/kilometre
 		mounttiltangle = raw[22] / 1.0e6
 
 		receiverinfo = raw[23]
