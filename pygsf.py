@@ -862,7 +862,7 @@ class SWATH_BATHYMETRY_PING :
 
 		self.frequency = raw[7] / 1.0e3
 		self.transmitsourcelevel = raw[8] / 1.0e2
-			self.pulsewidth = raw[9] / 1.0e7
+		self.pulsewidth = raw[9] / 1.0e7
 
 		#apply scaling as per email from Beaudoin https://jira.qps.nl/browse/SFM-2857
 		#self.beamwidthvertical = math.radians(raw[10] / 1.0e6

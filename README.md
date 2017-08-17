@@ -9,6 +9,7 @@ This is going to use the standard libraries from python, ie NOT use numpy, gsgli
 * make a las file of RGB where each color is an intensity
 
 # DONE
+* implemented pygsf2las to directly convert a gsf file into a las file
 * set grey scale range from 0 to 255 levels of gray so we user the full spectrum
 * default clip is set to 0.3%, ie 0.15 each side.  This represents a clip to 3*SD
 * mask empty areas from waterfall plots

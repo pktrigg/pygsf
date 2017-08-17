@@ -34,23 +34,6 @@ def positionFromRngBrg3():
 	print(lon2)
 
 ###############################################################################
-def positionFromRngBrg2(localradius, latitude1, longitude1, d, angle):
-	'''
-	compute geographical position efficiently
-	https://stackoverflow.com/questions/7222382/get-lat-long-given-current-point-distance-and-bearing
-	'''
-	R = localradius
-	# Earth Radious in KM
-	R = 6378.137 #6378.14;
-	d = d / 1000
-
-	brng = math.radians(angle)
-
-	latitude2 = math.degrees( math.asin(math.sin(latitude1) * math.cos(d / R) + math.cos(latitude1) * math.sin(d / R) * math.cos(brng)) )
-	longitude2 = math.degrees( longitude1 + math.atan2(math.sin(brng) * math.sin(d / R) * math.cos(latitude1), math.cos(d / R) - math.sin(latitude1) * math.sin(latitude2)) )
-
-	return longitude2, latitude2;
-###############################################################################
 def positionFromRngBrg(lat, lon, rng, brg):
 
 	R = 6378137/1000 #Radius of the Earth based on half WGS84 semi-major 6378137
