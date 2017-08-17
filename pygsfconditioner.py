@@ -80,8 +80,6 @@ def main():
 		# use a dictionary so we can easily find the correct array by frequency
 		beamPointingAngles = []
 		transmitSector = []
-		perbeam = True #set to true for perbeam processing, False for snippet provessing
-
 
 	for filename in matches:
 		if dump:
@@ -92,7 +90,7 @@ def main():
 		if extractBackscatter:
 			outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve_.csv")
 			outFileName = createOutputFileName(outFileName)
-			ARC = extractARC(filename, ARC, pygsf.ARCIdx, beamPointingAngles, transmitSector, perbeam)
+			ARC = extractARC(filename, ARC, pygsf.ARCIdx, beamPointingAngles, transmitSector)
 			# ARC, beamPointingAngles, transmitSector = extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector)
 
 		update_progress("Processed: %s (%d/%d)" % (filename, fileCounter, len(matches)), (fileCounter/len(matches)))
@@ -184,7 +182,7 @@ def	createsubsetfile(filename, odir, exclude):
 	return
 
 ###############################################################################
-def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector, perBeam=True):
+def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector):
 	r = pygsf.GSFREADER(filename, True)
 
 	while r.moreData():
@@ -194,7 +192,8 @@ def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector, perBea
 		'''to extract backscatter angular response curve we need to keep a count and sum of gsf samples in a per degree sector'''
 		'''to do this, we need to take into account the take off angle of each beam'''
 		if recordidentifier == pygsf.SWATH_BATHYMETRY:
-			datagram.scalefactors = r.scalefactors	
+			datagram.scalefactors = r.scalefactors
+			datagram.perbeam = True
 			datagram.snippettype = pygsf.SNIPPET_NONE  #define the snippet algorithm here.
 			datagram.read()
 
