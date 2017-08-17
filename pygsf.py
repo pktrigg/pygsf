@@ -16,12 +16,11 @@ import math
 import random
 from datetime import datetime
 from datetime import timedelta
+from statistics import mean
 
 # for testing only...
 import matplotlib.pyplot as plt
 import numpy as np
-
-
 
 #/* The high order 4 bits are used to define the field size for this array */
 GSF_FIELD_SIZE_DEFAULT  = 0x00  #/* Default values for field size are used used for all beam arrays */
@@ -65,165 +64,59 @@ def main():
 	# conditioner()
 
 ###############################################################################
-# def testR2SonicAdjustment():
-# 	'''
-# 	This test code confirms the results are in alignment with those from Norm Campbell at CSIRO who kindly provided the code in F77
-# 	'''
-# 	# adjusted backscatter		  -38.6
-# 	# adjusted backscatter		  -47.6
-# 	# adjusted backscatter		  -27.5
-# 	# adjusted backscatter		  -36.6
-# 	# adjusted backscatter		  -35.5
-
-# 	S1_angle = -58.0
-# 	S1_twtt = 0.20588
-# 	S1_range = 164.8
-# 	H0_TxPower = 197.0
-# 	H0_SoundSpeed = 1468.59
-# 	H0_RxAbsorption = 80.0
-# 	H0_TxBeamWidthVert = 0.0174533
-# 	H0_TxBeamWidthHoriz = 0.0087266
-# 	H0_TxPulseWidth = 0.000275
-# 	H0_RxSpreading = 35.0
-# 	H0_RxGain = 8.0
-# 	H0_VTX_Offset = -21.0 / 100.
-
-# 	n_snpt_val = 470
-# 	S1_uPa = n_snpt_val
-# 	z_snpt_BS_dB = 20. * math.log10(S1_uPa)
-
-# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-# 	print (adjusted)
-
-# 	S1_angle = -58.0
-# 	S1_twtt = 0.20588
-# 	S1_range = 164.8
-# 	H0_TxPower = 206.0
-# 	H0_SoundSpeed = 1468.59
-# 	H0_RxAbsorption = 80.0
-# 	H0_TxBeamWidthVert = 0.0174533
-# 	H0_TxBeamWidthHoriz = 0.0087266
-# 	H0_TxPulseWidth = 0.000275
-# 	H0_RxSpreading = 35.0
-# 	H0_RxGain = 8.0
-# 	H0_VTX_Offset = -21.0 / 100.
-
-# 	n_snpt_val = 470
-# 	S1_uPa = n_snpt_val
-# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-# 	print (adjusted)
-
-# 	S1_angle = - 58.0
-# 	S1_twtt = 0.20588
-# 	S1_range = 164.8
-# 	H0_TxPower = 197.0
-# 	H0_SoundSpeed = 1468.59
-# 	H0_RxAbsorption = 80.0
-# 	H0_TxBeamWidthVert = 0.0174533
-# 	H0_TxBeamWidthHoriz = 0.0087266
-# 	H0_TxPulseWidth = 0.000275
-# 	H0_RxSpreading = 30.0
-# 	H0_RxGain = 8.0
-# 	H0_VTX_Offset = -21.0 / 100.
-
-# 	n_snpt_val = 470
-# 	S1_uPa = n_snpt_val
-# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-# 	print (adjusted)
-
-# 	S1_angle = - 58.0
-# 	S1_twtt = 0.20588
-# 	S1_range = 164.8
-# 	H0_TxPower = 197.0
-# 	H0_SoundSpeed = 1468.59
-# 	H0_RxAbsorption = 80.0
-# 	H0_TxBeamWidthVert = 0.0174533
-# 	H0_TxBeamWidthHoriz = 0.0087266
-# 	H0_TxPulseWidth = 0.000275
-# 	H0_RxSpreading = 35.0
-# 	H0_RxGain = 6.0
-# 	H0_VTX_Offset = -21.0 / 100.
-
-# 	n_snpt_val = 470
-# 	S1_uPa = n_snpt_val
-# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-# 	print (adjusted)
-
-
-# 	S1_angle = - 58.0
-# 	S1_twtt = 0.20588
-# 	S1_range = 164.8
-# 	H0_TxPower = 207.0
-# 	H0_SoundSpeed = 1468.59
-# 	H0_RxAbsorption = 80.0
-# 	H0_TxBeamWidthVert = 0.0174533
-# 	H0_TxBeamWidthHoriz = 0.0087266
-# 	H0_TxPulseWidth = 0.000275
-# 	H0_RxSpreading = 30.0
-# 	H0_RxGain = 6.0
-# 	H0_VTX_Offset = -21.0 / 100.
-
-# 	n_snpt_val = 470
-# 	S1_uPa = n_snpt_val
-# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
-# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
-# 	print (adjusted)
-
-# 	return
-
-
-
-###############################################################################
 def testreader():
 	'''
 	sample read script so we can see how to use the code
 	'''
 	start_time = time.time() # time the process so we can keep it quick
-	filename = "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 123110 - 0002-2026_1.gsf"
+	filename = "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 125110 - 0001-2026_1.gsf"
 	pingcount = 0
 	# create a GSFREADER class and pass the filename
 	r = GSFREADER(filename)
 	# r.loadnavigation()
 
 
-	f1 = plt.figure()
-	# f2 = plt.figure()
-	# f3 = plt.figure()
+	# f1 = plt.figure()
+	# # f2 = plt.figure()
+	# # f3 = plt.figure()
 
-	ax1 = f1.add_subplot(111)
-	# ax2 = f2.add_subplot(111)
-	# ax3 = f3.add_subplot(111)
+	# ax1 = f1.add_subplot(111)
+	# # ax2 = f2.add_subplot(111)
+	# # ax3 = f3.add_subplot(111)
 
+	print ("datagram.pingnumber, freq100, freq200, freq400")
 	while r.moreData():
 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
 		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
 		numberofbytes, recordidentifier, datagram = r.readDatagram()
 		# print(recordidentifier, end='')
-
 		if recordidentifier == SWATH_BATHYMETRY:
 			datagram.read()
 			datagram.snippettype = SNIPPET_NONE
-			print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d Serial %s" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency, datagram.serialnumber))
+			# print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d Serial %s" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency, datagram.serialnumber))
 
-			bs = []
-			for s in datagram.MEAN_REL_AMPLITUDE_ARRAY:
-				if s != 0:
-					bs.append(20 * math.log10(s) - 100)
-				else:
-					bs.append(0)
+			# bs = []
+			# for s in datagram.MEAN_REL_AMPLITUDE_ARRAY:
+			# 	if s != 0:
+			# 		bs.append(20 * math.log10(s) - 100)
+			# 	else:
+			# 		bs.append(0)
 
 			# bs = [20 * math.log10(s) - 100 for s in datagram.MEAN_REL_AMPLITUDE_ARRAY]
+			samplearray = datagram.R2Soniccorrection()
 			if datagram.frequency == 100000:
-				samplearray = datagram.R2Soniccorrection()
-				if len(bs) > 0:
-					plt.plot(datagram.BEAM_ANGLE_ARRAY, bs, linewidth=0.25, color='blue')
-					plt.ylim([-60,-5])
-					plt.xlim([-60,60])
-					# ax3.plot(datagram.BEAM_ANGLE_ARRAY, datagram.ALONG_TRACK_ARRAY)
-					plt.pause(0.001)
+				freq100 = mean(samplearray)
+			if datagram.frequency == 200000:
+				freq200 = mean(samplearray)
+			if datagram.frequency == 400000:
+				freq400 = mean(samplearray)
+				print ("%d,%.3f,%.3f,%.3f" %(datagram.pingnumber, freq100, freq200, freq400))
+				# if len(bs) > 0:
+				# 	plt.plot(datagram.BEAM_ANGLE_ARRAY, bs, linewidth=0.25, color='blue')
+				# 	plt.ylim([-60,-5])
+				# 	plt.xlim([-60,60])
+				# 	# ax3.plot(datagram.BEAM_ANGLE_ARRAY, datagram.ALONG_TRACK_ARRAY)
+				# 	plt.pause(0.001)
 
 			# datagram.clippolar(-60, 60)
 			pingcount += 1
@@ -316,6 +209,7 @@ class SWATH_BATHYMETRY_PING :
 		self.SECTOR_NUMBER_ARRAY = []
 		# self.INTENSITY_SERIES_ARRAY = []
 		self.SNIPPET_SERIES_ARRAY = []
+		self.perbeam = True
 		self.snippettype = SNIPPET_MAX
 		self.numbeams = 0
 		self.time = 0
@@ -574,10 +468,9 @@ class SWATH_BATHYMETRY_PING :
 		return
 
 ###############################################################################
-	def R2Soniccorrection(self, perBeam=True):
+	def R2Soniccorrection(self):
 		'''entry point for r2sonic backscatter TVG, Gain and footprint correction algorithm'''
-		perBeam = True
-		if perBeam:
+		if self.perbeam:
 			samplearray = self.MEAN_REL_AMPLITUDE_ARRAY
 		else:
 			samplearray = self.SNIPPET_SERIES_ARRAY
@@ -865,10 +758,10 @@ class SWATH_BATHYMETRY_PING :
 		self.pulsewidth = raw[9] / 1.0e7
 
 		#apply scaling as per email from Beaudoin https://jira.qps.nl/browse/SFM-2857
-		#self.beamwidthvertical = math.radians(raw[10] / 1.0e6
-		#self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6		
-		self.beamwidthvertical = math.radians(raw[10] / 1.0e6 * (400000 / self.frequency))
-		self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6 * (400000 / self.frequency))
+		self.beamwidthvertical = math.radians(raw[10] / 1.0e6)
+		self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6)
+		#self.beamwidthvertical = math.radians(raw[10] / 1.0e6 * (400000 / self.frequency))
+		#self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6 * (400000 / self.frequency))
 
 			
 		transmitsteeringvertical = raw[12] / 1.0e6
@@ -1147,3 +1040,116 @@ class cBeam:
 ###############################################################################
 if __name__ == "__main__":
 	main()
+
+	# def testR2SonicAdjustment():
+# 	'''
+# 	This test code confirms the results are in alignment with those from Norm Campbell at CSIRO who kindly provided the code in F77
+# 	'''
+# 	# adjusted backscatter		  -38.6
+# 	# adjusted backscatter		  -47.6
+# 	# adjusted backscatter		  -27.5
+# 	# adjusted backscatter		  -36.6
+# 	# adjusted backscatter		  -35.5
+
+# 	S1_angle = -58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 197.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 35.0
+# 	H0_RxGain = 8.0
+# 	H0_VTX_Offset = -21.0 / 100.
+
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10(S1_uPa)
+
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
+
+# 	S1_angle = -58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 206.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 35.0
+# 	H0_RxGain = 8.0
+# 	H0_VTX_Offset = -21.0 / 100.
+
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
+
+# 	S1_angle = - 58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 197.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 30.0
+# 	H0_RxGain = 8.0
+# 	H0_VTX_Offset = -21.0 / 100.
+
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
+
+# 	S1_angle = - 58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 197.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 35.0
+# 	H0_RxGain = 6.0
+# 	H0_VTX_Offset = -21.0 / 100.
+
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
+
+
+# 	S1_angle = - 58.0
+# 	S1_twtt = 0.20588
+# 	S1_range = 164.8
+# 	H0_TxPower = 207.0
+# 	H0_SoundSpeed = 1468.59
+# 	H0_RxAbsorption = 80.0
+# 	H0_TxBeamWidthVert = 0.0174533
+# 	H0_TxBeamWidthHoriz = 0.0087266
+# 	H0_TxPulseWidth = 0.000275
+# 	H0_RxSpreading = 30.0
+# 	H0_RxGain = 6.0
+# 	H0_VTX_Offset = -21.0 / 100.
+
+# 	n_snpt_val = 470
+# 	S1_uPa = n_snpt_val
+# 	z_snpt_BS_dB = 20. * math.log10 ( S1_uPa )
+# 	adjusted = R2Sonicbackscatteradjustment( S1_angle, S1_twtt, S1_range, S1_uPa, H0_TxPower, H0_SoundSpeed, H0_RxAbsorption, H0_TxBeamWidthVert, H0_TxBeamWidthHoriz, H0_TxPulseWidth, H0_RxSpreading, H0_RxGain, H0_VTX_Offset, z_snpt_BS_dB)
+# 	print (adjusted)
+
+# 	return
+
+
+
+###############################################################################
