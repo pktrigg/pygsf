@@ -4,6 +4,8 @@ python module for access of GSF Files (Generic Sensor Format)
 This is going to use the standard libraries from python, ie NOT use numpy, gsglib, or external any dependencies.
 
 # 2DO
+try again
+
 * 1942 becomes corrugated when we apply the ARC.  no problem if not applied
 * make a las file for each frequency where intensity is the amplitude data
 * make a las file of RGB where each color is an intensity
