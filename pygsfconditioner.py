@@ -198,7 +198,7 @@ def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector):
 			datagram.read()
 
 			# we have an R2 system, so we can apply a backscatter correction algorithm
-			samplearray = datagram.R2Soniccorrection(perBeam)
+			samplearray = datagram.R2Soniccorrection()
 			idx = pygsf.ARCIdx[datagram.frequency]
 			for i in range(datagram.numbeams):
 				# now place the results into the correct bucket based on frequency

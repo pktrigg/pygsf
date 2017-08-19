@@ -101,19 +101,19 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, inv
 	r = pygsf.GSFREADER(filename)
 	scalefactors = r.loadscalefactors()
 	totalrecords = r.getrecordcount()
-	perBeam = True
 
 	while r.moreData():
 		numberofbytes, recordidentifier, datagram = r.readDatagram()
 		if recordidentifier == 2: #SWATH_BATHYMETRY_PING
-			datagram.scalefactors = scalefactors	
+			datagram.scalefactors = scalefactors
+			datagram.perbeam = True
 			datagram.snippettype = pygsf.SNIPPET_NONE
 			datagram.read()
 			datagram.cliptwtt(0)
 			datagram.clipintensity(0)
 			datagram.clippolar(-60,60)
 			
-			samplearray = datagram.R2Soniccorrection(perBeam)
+			samplearray = datagram.R2Soniccorrection()
 			idx = pygsf.ARCIdx[datagram.frequency]
 
 			# we need to stretch the data to make it isometric, so lets use numpy interp routing to do that for Us
@@ -218,6 +218,10 @@ def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1
 		img = img.rotate(-90, expand=True)
 
 	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename[0])), odir, os.path.splitext(filename)[0] + "_Waterfall_" + suffix + ".png")
+
+	if not os.path.exists(os.path.dirname(outFileName)):
+		os.makedirs(os.path.dirname(outFileName))
+
 	# img.save(os.path.splitext(filename)[0]+'.png')
 	img.save(outFileName)
 	print ("Saved to: ", os.path.splitext(filename)[0]+'.png')
