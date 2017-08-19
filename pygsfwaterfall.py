@@ -25,6 +25,8 @@ def main():
 	parser = argparse.ArgumentParser(description='Read GSF file and create a reflectivity image.')
 	parser.add_argument('-a', action='store_true', default=False, dest='annotate', help='-a : Annotate the image with timestamps.  [Default: True]')
 	parser.add_argument('-clip', dest='clip', default = 0.15, action='store', help='-clip <value> : Clip the minimum and maximum edges of the data by this percentage so the color stretch better represents the data.  [Default - 5.  A good value is -clip 1.]')
+	parser.add_argument('-minz', dest='minz', default = 0.0, action='store', help='-minz <value> : use this minimum sample value in the gray scale transform. [Default - 0]')
+	parser.add_argument('-maxz', dest='maxz', default = 0.0, action='store', help='-maxz <value> : use this maximum sample value in the gray scale transform. [Default - 0]')
 	parser.add_argument('-color', dest='color', default = 'gray', action='store', help='-color <paletteName> : Specify the color palette.  Options are : -color yellow_brown_log, -color gray, -color yellow_brown or any of the palette filenames in the script folder. [Default = gray.]' )
 	parser.add_argument('-i', dest='inputFile', action='store', help='-i <ALLfilename> : input ALL filename to image. It can also be a wildcard, e.g. *.gsf')
 	parser.add_argument('-invert', dest='invert', default = False, action='store_true', help='-invert : Inverts the color palette')
@@ -82,10 +84,10 @@ def main():
 			while (bc < 300):
 				zoom *= 2
 				bc *= zoom 
-		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), args.invert, args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation, applyarc, arc)
+		createWaterfall(filename, args.odir, args.color, beamCount, zoom, float(args.clip), float(args.minz), float(args.maxz), args.invert, args.annotate, xResolution, yResolution, args.rotate, leftExtent, rightExtent, distanceTravelled, navigation, applyarc, arc)
 
 ###############################################################################
-def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[], applyarc=False, arc=[]):
+def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, minz=0, maxz=100, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[], applyarc=False, arc=[]):
 	print ("Processing file: ", filename)
 
 	start_time = time.time() # time the process
@@ -159,11 +161,11 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, inv
 	update_progress("Decoding .gsf file", 1)
 	r.close()	
 
-	createImage(filename, odir, "100kHz", colorScale, beamCount, waterfall100, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
-	createImage(filename, odir, "200kHz", colorScale, beamCount, waterfall200, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
-	createImage(filename, odir, "400kHz", colorScale, beamCount, waterfall400, zoom, clip, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	createImage(filename, odir, "100kHz", colorScale, beamCount, waterfall100, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	createImage(filename, odir, "200kHz", colorScale, beamCount, waterfall200, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	createImage(filename, odir, "400kHz", colorScale, beamCount, waterfall400, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
 
-def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1.0, clip=1, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
+def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1.0, clip=1, minz=0, maxz=100, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
 
 	isoStretchFactor = (yResolution/xResolution) * zoom
 	print ("xRes %.2f yRes %.2f isoStretchFactor %.2f" % (xResolution, yResolution, isoStretchFactor))
@@ -187,10 +189,10 @@ def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1
 	
 	if colorScale.lower() == "graylog": 
 		print ("Converting to Image with graylog scale...")
-		img = samplesToGrayImageLogarithmic(npGrid, invert, clip)
+		img = samplesToGrayImageLogarithmic(npGrid, invert, clip, minz, maxz)
 	elif colorScale.lower() == "gray":
 		print ("Converting to Image with gray scale...")
-		img = samplesToGrayImage(npGrid, invert, clip)
+		img = samplesToGrayImage(npGrid, invert, clip, minz, maxz)
 
 	# now try some of the PIL image processing to clean up` 
 	# gaussian_kernel = ImageFilter.Kernel((3, 3), [1, 2, 1, 2, 4, 2, 1, 2, 1], 16)
@@ -269,24 +271,19 @@ def findMinMaxClipValues(channel, clip):
 
 	return minclip, maxclip
 
-###################################
-# gray_LL = lower limit of grey scale
-# gray_UL = upper limit of grey scale
-# sample_LL = lower limit of samples range
-# sample_UL = upper limit of sample range
-
-###################################
-# gray_LL = lower limit of grey scale
-# gray_UL = upper limit of grey scale
-# sample_LL = lower limit of samples range
-# sample_UL = upper limit of sample range
-def samplesToGrayImage(samples, invert, clip):
+##################################################################################	
+def samplesToGrayImage(samples, invert, clip, minz, maxz ):
+	'''
+	# gray_LL = lower limit of grey scale
+	# gray_UL = upper limit of grey scale
+	# sample_LL = lower limit of samples range
+	# sample_UL = upper limit of sample range
+	'''
 	gray_LL = 0 # min and max grey scales
 	gray_UL = 255
 	sample_LL = 0 
 	sample_UL = 0
 	conv_01_99 = 1
-##################################################################################	
 	#create numpy arrays so we can compute stats
 	channel = samples
 	channel = ma.masked_equal(channel, 0.0)
@@ -296,6 +293,10 @@ def samplesToGrayImage(samples, invert, clip):
 	else:
 		sample_LL = channel.min()
 		sample_UL = channel.max()
+	if clip == -1: #clip to a global value
+		sample_LL = minz
+		sample_UL = maxz
+
 		print ("sample range LL %.3f UL %.3f" % (sample_LL, sample_UL))
 	# this scales from the range of image values to the range of output grey levels
 	if (sample_UL - sample_LL) is not 0:
@@ -318,7 +319,7 @@ def samplesToGrayImage(samples, invert, clip):
 # gray_UL = upper limit of grey scale
 # sample_LL = lower limit of samples range
 # sample_UL = upper limit of sample range
-def samplesToGrayImageLogarithmic(samples, invert, clip):
+def samplesToGrayImageLogarithmic(samples, invert, clip, minz, maxz):
 	gray_LL = 0 # 
 	gray_UL = 255 # a lower number clips the white and makes the image darker
 	sample_LL = 0 

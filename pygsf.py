@@ -631,8 +631,8 @@ class SWATH_BATHYMETRY_PING :
 		self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6)
 		
 		#apply scaling as per email from Beaudoin https://jira.qps.nl/browse/SFM-2857
-		# self.beamwidthvertical = math.radians(raw[10] / 1.0e6 * (400000 / self.frequency))
-		# self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6 * (400000 / self.frequency))
+		self.beamwidthvertical = math.radians(raw[10] / 1.0e6 * (400000 / self.frequency))
+		self.beamwidthhorizontal = math.radians(raw[11] / 1.0e6 * (400000 / self.frequency))
 	
 		transmitsteeringvertical = raw[12] / 1.0e6
 		transmitsteeringhorizontal = raw[13] / 1.0e6
@@ -908,6 +908,8 @@ class cBeam:
 		self.sector				 = 0
 		self.takeOffAngle		   = angle	 # used for ARC computation
 		self.sampleSum			  = 0		 # used for backscatter ARC computation process
+		self.sampleMin			  = 999		 
+		self.sampleMax			  = -999		 
 		self.samples				= []
 
 ###############################################################################

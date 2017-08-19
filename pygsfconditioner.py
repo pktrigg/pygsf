@@ -203,6 +203,8 @@ def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector):
 			for i in range(datagram.numbeams):
 				# now place the results into the correct bucket based on frequency
 				arcIndex = round(datagram.BEAM_ANGLE_ARRAY[i]- ARC[0][idx].takeOffAngle) # efficiently find the correct slot for the data
+				ARC[arcIndex][idx].sampleMin = min(samplearray[i])
+				ARC[arcIndex][idx].sampleMax = max(samplearray[i])
 				ARC[arcIndex][idx].sampleSum += samplearray[i]
 				ARC[arcIndex][idx].numberOfSamplesPerBeam += 1
 				ARC[arcIndex][idx].sector = datagram.SECTOR_NUMBER_ARRAY[i]

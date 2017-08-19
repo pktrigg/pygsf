@@ -61,11 +61,20 @@ def convert(filename, odir):
 
 	# write out a WGS variable length record so users know the coordinate reference system
 	writer.writeVLR_WGS84()
-	writer.hdr.PointDataRecordFormat = 10
+	writer.hdr.PointDataRecordFormat = 2
 
 	r = pygsf.GSFREADER(filename)
 	scalefactors = r.loadscalefactors()
 	start_time = time.time() # time the process
+
+	red = 0
+	green = 0
+	blue = 0
+	gray_LL = 0 # min and max grey scales
+	gray_UL = 255
+	sample_LL = -60 
+	sample_UL = 0
+	conv_01_99 = ( gray_UL - gray_LL ) / ( sample_UL - sample_LL )
 
 	while r.moreData():
 		numberofbytes, TypeOfDatagram, datagram = r.readDatagram()
@@ -91,24 +100,29 @@ def convert(filename, odir):
 		for i in range(len(datagram.DEPTH_ARRAY)):
 			if datagram.BEAM_FLAGS_ARRAY[i] < 0:
 				continue #skip rejected records
-
-			# given the Dx,Dy soundings, compute a range, bearing so we can correccttly map out the soundings
-			brg = (90 - (180 / math.pi) * math.atan2(datagram.ALONG_TRACK_ARRAY[i], datagram.ACROSS_TRACK_ARRAY[i]) )
-			rng = math.sqrt( (datagram.ACROSS_TRACK_ARRAY[i]**2) + (datagram.ALONG_TRACK_ARRAY[i]**2) )
-
-			# x,y = positionFromRngBrg4(lat, lon, rng, brg + datagram.Heading)
-			
-			x,y = destinationPoint(datagram.latitude, datagram.longitude, rng, brg + datagram.heading, localradius)
-
-			# print ("%.10f, %.10f, %.3f" % (x, y, datagram.DEPTH_ARRAY[i]))
-			# now add some random point data to the point lists
-			writer.x.append(x)
-			writer.y.append(y)
-			writer.z.append(datagram.DEPTH_ARRAY[i])
-			writer.intensity.append(max(0,int(min(255,abs(samplearray[i])))))
-			writer.red.append(max(0,int(min(255,abs(samplearray[i])))))
-			recCount = recCount + 1
-
+			if datagram.frequency == 100000:
+				red = int((samplearray[i] - sample_LL) * conv_01_99)
+				red = min(max(0, red), 255)
+			if datagram.frequency == 200000:
+				green = int((samplearray[i] - sample_LL) * conv_01_99)
+				green = min(max(0, green), 255)
+			if datagram.frequency == 400000:
+				blue = int((samplearray[i] - sample_LL) * conv_01_99)
+				blue = min(max(0, blue), 255)
+				writer.red.append(red)
+				writer.green.append(green)
+				writer.blue.append(blue)
+				writer.intensity.append(blue)
+				# given the Dx,Dy soundings, compute a range, bearing so we can correccttly map out the soundings
+				brg = (90 - (180 / math.pi) * math.atan2(datagram.ALONG_TRACK_ARRAY[i], datagram.ACROSS_TRACK_ARRAY[i]) )
+				rng = math.sqrt( (datagram.ACROSS_TRACK_ARRAY[i]**2) + (datagram.ALONG_TRACK_ARRAY[i]**2) )
+				x,y = destinationPoint(datagram.latitude, datagram.longitude, rng, brg + datagram.heading, localradius)
+				writer.x.append(x)
+				writer.y.append(y)
+				writer.z.append(blue)
+				# writer.z.append(datagram.DEPTH_ARRAY[i])
+				recCount = recCount + 1
+			# print (red, green, blue)
 	# before we write any points, we need to compute the bounding box, scale and offsets
 	writer.computebbox_offsets()
 	writer.writepoints()
