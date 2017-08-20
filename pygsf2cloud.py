@@ -67,14 +67,14 @@ def convert(filename, odir):
 	scalefactors = r.loadscalefactors()
 	start_time = time.time() # time the process
 
-	red = 0
-	green = 0
-	blue = 0
+	red = []
+	green = []
+	blue = []
 	gray_LL = 0 # min and max grey scales
 	gray_UL = 255
 	sample_LL = -60 
 	sample_UL = 0
-	conv_01_99 = ( gray_UL - gray_LL ) / ( sample_UL - sample_LL )
+	conv_01_99 = 5 # ( gray_UL - gray_LL ) / ( sample_UL - sample_LL )
 
 	while r.moreData():
 		numberofbytes, TypeOfDatagram, datagram = r.readDatagram()
@@ -96,32 +96,36 @@ def convert(filename, odir):
 		
 		samplearray = datagram.R2Soniccorrection()
 
-		# for each beam in the ping, compute the real world position
-		for i in range(len(datagram.DEPTH_ARRAY)):
-			if datagram.BEAM_FLAGS_ARRAY[i] < 0:
-				continue #skip rejected records
-			if datagram.frequency == 100000:
-				red = int((samplearray[i] - sample_LL) * conv_01_99)
-				red = min(max(0, red), 255)
-			if datagram.frequency == 200000:
-				green = int((samplearray[i] - sample_LL) * conv_01_99)
-				green = min(max(0, green), 255)
-			if datagram.frequency == 400000:
-				blue = int((samplearray[i] - sample_LL) * conv_01_99)
-				blue = min(max(0, blue), 255)
-				writer.red.append(red)
-				writer.green.append(green)
-				writer.blue.append(blue)
-				writer.intensity.append(blue)
+		color = [min(max(0, int((s - sample_LL) * conv_01_99)), 255) for s in samplearray]
+		color = [255 -c for c in color]
+		if datagram.frequency == 100000:
+			red = color
+		if datagram.frequency == 200000:
+			green = color
+		if datagram.frequency == 400000:
+			blue = color
+			if len(red) == 0 or len(green) == 0:
+				continue
+		
+			# for each beam in the ping, compute the real world position
+			for i in range(len(datagram.DEPTH_ARRAY)):
+				if datagram.BEAM_FLAGS_ARRAY[i] < 0:
+					continue #skip rejected records
+
+				writer.red.append(red[i])
+				writer.green.append(green[i])
+				writer.blue.append(blue[i])
+				writer.intensity.append(blue[i])
 				# given the Dx,Dy soundings, compute a range, bearing so we can correccttly map out the soundings
 				brg = (90 - (180 / math.pi) * math.atan2(datagram.ALONG_TRACK_ARRAY[i], datagram.ACROSS_TRACK_ARRAY[i]) )
 				rng = math.sqrt( (datagram.ACROSS_TRACK_ARRAY[i]**2) + (datagram.ALONG_TRACK_ARRAY[i]**2) )
 				x,y = destinationPoint(datagram.latitude, datagram.longitude, rng, brg + datagram.heading, localradius)
 				writer.x.append(x)
 				writer.y.append(y)
-				writer.z.append(blue)
-				# writer.z.append(datagram.DEPTH_ARRAY[i])
-				recCount = recCount + 1
+				writer.z.append(datagram.DEPTH_ARRAY[i])
+			recCount = recCount + 1
+			# if recCount == 100:
+			# 	break
 			# print (red, green, blue)
 	# before we write any points, we need to compute the bounding box, scale and offsets
 	writer.computebbox_offsets()

@@ -230,8 +230,8 @@ class SWATH_BATHYMETRY_PING :
 		for i, s in enumerate(self.BEAM_ANGLE_ARRAY):
 			if (s <= leftclipdegrees) or (s >= rightclipdegrees):
 				self.QUALITY_FACTOR_ARRAY[i] += REJECT_CLIP
-				self.MEAN_REL_AMPLITUDE_ARRAY[i] = 0
-				self.ACROSS_TRACK_ARRAY[i] = 0
+				# self.MEAN_REL_AMPLITUDE_ARRAY[i] = 0
+				# self.ACROSS_TRACK_ARRAY[i] = 0
 		return
 ###############################################################################
 	def cliptwtt(self, minimumtraveltime=0.0):
