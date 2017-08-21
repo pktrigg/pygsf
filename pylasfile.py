@@ -1008,27 +1008,27 @@ class lashdr:
 		s.append([fmt,fmtlen])
 
 		# format 1, v1.2,v1.4
-		fmt = "<lllH BB B BH d"
+		fmt = "<lllH BB b BH d"
 		fmtlen = struct.calcsize(fmt)
 		s.append([fmt,fmtlen])
 
 		# format 2, v1.2,v1.4
-		fmt = "<lllH B BBBH HHH"
+		fmt = "<lllH B BbBH HHH"
 		fmtlen = struct.calcsize(fmt)
 		s.append([fmt,fmtlen])
 
 		# format 3, v1.2,v1.4
-		fmt = "<lllH B BBBH d HHH"
+		fmt = "<lllH B BbBH d HHH"
 		fmtlen = struct.calcsize(fmt)
 		s.append([fmt,fmtlen])
 
 		# format 4, v1.4
-		fmt = "<lllH BBBBH d BQLffff"
+		fmt = "<lllH BBbBH d BQLffff"
 		fmtlen = struct.calcsize(fmt)
 		s.append([fmt,fmtlen])
 	
 		# format 5, v1.4
-		fmt = "<lllH BBBB HdHH H BQLffff"
+		fmt = "<lllH BBbB HdHH H BQLffff"
 		fmtlen = struct.calcsize(fmt)
 		s.append([fmt,fmtlen])
 

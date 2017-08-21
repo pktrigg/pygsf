@@ -45,19 +45,21 @@ def main():
 	print (matches)
 
 	# # print ("processing with settings: ", args)
-
+	pointsourceID = 1
 	for filename in matches:
 		if not filename.endswith('.gsf'):
 			print ("File %s is not a .gsf file, skipping..." % (filename))
 			continue
-		convert(filename, args.odir)
+		convert(filename, args.odir, pointsourceID)
+		pointsourceID += 1
 
-def convert(filename, odir):	
+def convert(filename, odir, pointsourceID = 1):	
 	recCount = 0
 	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), odir, os.path.splitext(os.path.basename(filename))[0] + ".las")
 	outFileName = createOutputFileName(outFileName)
 	print("outputfile %s" % outFileName)
 	writer = pylasfile.laswriter(outFileName, 1.4)
+	writer.hdr.FileSourceID = pointsourceID
 
 	# write out a WGS variable length record so users know the coordinate reference system
 	writer.writeVLR_WGS84()
@@ -123,8 +125,11 @@ def convert(filename, odir):
 				writer.x.append(x)
 				writer.y.append(y)
 				writer.z.append(datagram.DEPTH_ARRAY[i])
+				writer.scanangle.append(int(datagram.BEAM_ANGLE_ARRAY[i]))
+				writer.pointsourceid.append(pointsourceID)
+				writer.gpstime.append(datagram.time)
 			recCount = recCount + 1
-			# if recCount == 100:
+			# if recCount == 1:
 			# 	break
 			# print (red, green, blue)
 	# before we write any points, we need to compute the bounding box, scale and offsets
