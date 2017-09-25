@@ -1,11 +1,7 @@
-#name:			pygsf
+#name:			computeAbsorption
 #created:		July 2017
 #by:			p.kennedy@fugro.com
-#description:	python module to read and write a Generic Sensor Formaty (GSF) file natively
-#notes:			See main at end of script for example how to use this
-#based on GSF Version 3.05
-
-# See readme.md for more details
+#description:	python module to compute the absorption of sound in seawater, and read a CTD probe CSV file.
 
 import os.path
 import struct

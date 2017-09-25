@@ -70,9 +70,16 @@ def testreader():
 	sample read script so we can see how to use the code
 	'''
 	start_time = time.time() # time the process so we can keep it quick
-	filename = "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 125110 - 0001-2026_1.gsf"
-	filename = "F:/Projects/multispectral/_Newbex/20170524-134208 - 0001-2026_1.gsf"
-	filename = "F:/Projects/multispectral/_BedfordBasin2017/20170502 - 131750 - 0001-2026_1.gsf"
+
+	# filename = "C:/projects/multispectral/PatriciaBasin/20161130-1907 - 0001-2026_1.gsf"
+
+	# filename = "C:/development/python/sample_subset.gsf"
+	# filename = "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 125110 - 0001-2026_1.gsf"
+	# filename = "F:/Projects/multispectral/_Newbex/20170524-134208 - 0001-2026_1.gsf"
+	# filename = "F:/Projects/multispectral/_BedfordBasin2017/20170502 - 131750 - 0001-2026_1.gsf"
+	filename = "C:/projects/multispectral/_BedfordBasin2017/20170502 - 150058 - 0001-2026_1.gsf"
+
+
 	print (filename)
 	pingcount = 0
 	# create a GSFREADER class and pass the filename
@@ -116,6 +123,7 @@ def testreader():
 			if datagram.frequency == 400000:
 				freq400 = mean(samplearray)
 				# print ("%d,%d,%.3f,%.3f,%.3f" %(pingcount, datagram.pingnumber, freq100, freq200, freq400))
+				print ("%d" %(pingcount))
 				pingcount += 1
 				# if len(bs) > 0:
 				# 	plt.plot(datagram.BEAM_ANGLE_ARRAY, bs, linewidth=0.25, color='blue')
@@ -128,45 +136,6 @@ def testreader():
 	# print("Duration %.3fs" % (time.time() - start_time )) # time the process
 	# print ("PingCount:", pingcount)
 	return
-
-###############################################################################
-# def conditioner():
-# 	'''
-# 	sample condition script so we can strip out unrequired datagrams such as verbose attitude records
-# 	'''
-# 	start_time = time.time() # time the process so we can keep it quick
-# 	writeConditionedFile = True
-# 	exclude = [ATTITUDE] #exclude records of this type (attitude is type 12)
-# 	filename = "C:/development/python/sample.gsf"
-
-# 	if writeConditionedFile:
-# 		outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), os.path.splitext(os.path.basename(filename))[0] + "_subset.gsf")
-# 		outFileName = createOutputFileName(outFileName)
-# 		outFilePtr = open(outFileName, 'wb')
-# 		print ("output file: %s" % outFileName)
-
-# 	# create a GSFREADER class and pass the filename
-# 	r = GSFREADER(filename, False)
-
-# 	excluded = 0 
-# 	while r.moreData():
-# 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
-# 		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
-# 		numberofbytes, recordidentifier, datagram = r.readDatagram()
-
-# 		# read the bytes into a buffer 
-# 		rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
-
-# 		if recordidentifier in exclude:
-# 			excluded += 1
-# 			continue
-
-# 		if writeConditionedFile:
-# 			outFilePtr.write(rawBytes)
-
-# 	print("Duration %.3fs record count excluded: %d" % ((time.time() - start_time ), excluded)) # time the process
-
-# 	return
 
 ###############################################################################
 class UNKNOWN_RECORD:
@@ -396,7 +365,7 @@ class SWATH_BATHYMETRY_PING :
 			sf.multiplier = s[1]
 			sf.offset = s[2]
 			self.scalefactors.append(sf)
-		# print (self.scalefactors)
+		print (self.scalefactors)
 		return
 
 	def readintensityarray(self, snippets, scale, offset, datatype, snippettype):

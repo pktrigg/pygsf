@@ -39,7 +39,7 @@ def main():
 	fileCounter=0
 	matches = []
 	extractBackscatter = False
-	writeConditionedFile = True
+	writeConditionedFile = False
 	dump = False
 	latitude = 0
 	longitude = 0
@@ -134,7 +134,7 @@ def	dumpfile(filename, odir):
 	# outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), odir, os.path.splitext(os.path.basename(filename))[0] + "_subset" + os.path.splitext(os.path.basename(filename))[1])
 	outFileName  = createOutputFileName(outFileName)
 	outFilePtr = open(outFileName, 'w')
-	print ("writing to file: %s" % outFileName)
+	print ("writing dump to file: %s" % outFileName)
 
 	r = pygsf.GSFREADER(filename)
 	counter = 0
@@ -152,7 +152,7 @@ def	dumpfile(filename, odir):
 	
 	outFilePtr.close()
 	r.close()
-	print ("Saving conditioned file to: %s" % outFileName)		
+	print ("Saving dump to: %s" % outFileName)		
 	outFilePtr.close()
 	return
 
@@ -162,7 +162,7 @@ def	createsubsetfile(filename, odir, exclude):
 	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), odir, os.path.splitext(os.path.basename(filename))[0] + "_subset" + os.path.splitext(os.path.basename(filename))[1])
 	outFileName  = createOutputFileName(outFileName)
 	outFilePtr = open(outFileName, 'wb')
-	print ("writing to file: %s" % outFileName)
+	print ("writing subset to file: %s" % outFileName)
 
 	r = pygsf.GSFREADER(filename)
 	counter = 0
