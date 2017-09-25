@@ -20,6 +20,7 @@ def main():
 	# start_time = time.time() # time the process
 	parser = argparse.ArgumentParser(description='Read GSF file and create a point cloud file from DXYZ data.')
 	parser.add_argument('-i', dest='inputFile', action='store', help='-i <filename> : input filename to image. It can also be a wildcard, e.g. *.gsf')
+	parser.add_argument('-intensitysource', dest='intensitysource', action='store', default="100000", help='Specify a frequency of multibeam you wish to populate into the intensity field of the las file. e.g. -intensitysource 100000')
 	parser.add_argument('-odir', dest='odir', action='store', default="", help='Specify a relative output folder e.g. -odir conditioned')
 	parser.add_argument('-r', action='store_true', default=False, dest='recursive', help='Search recursively from the current folder.  [Default: False]')
 
@@ -50,10 +51,10 @@ def main():
 		if not filename.endswith('.gsf'):
 			print ("File %s is not a .gsf file, skipping..." % (filename))
 			continue
-		convert(filename, args.odir, pointsourceID)
+		convert(filename, args.odir, pointsourceID, float(args.intensitysource))
 		pointsourceID += 1
 
-def convert(filename, odir, pointsourceID = 1):	
+def convert(filename, odir, pointsourceID = 1, intensitysource=100000):	
 	recCount = 0
 	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), odir, os.path.splitext(os.path.basename(filename))[0] + ".las")
 	outFileName = createOutputFileName(outFileName)
@@ -100,6 +101,11 @@ def convert(filename, odir, pointsourceID = 1):
 
 		color = [min(max(0, int((s - sample_LL) * conv_01_99)), 255) for s in samplearray]
 		color = [255 -c for c in color]
+		
+		# the user can specify which frequency goes into the intensity slot...
+		if datagram.frequency == intensitysource:
+			intensity = color
+
 		if datagram.frequency == 100000:
 			red = color
 		if datagram.frequency == 200000:
@@ -117,7 +123,7 @@ def convert(filename, odir, pointsourceID = 1):
 				writer.red.append(red[i])
 				writer.green.append(green[i])
 				writer.blue.append(blue[i])
-				writer.intensity.append(blue[i])
+				writer.intensity.append(intensity[i])
 				# given the Dx,Dy soundings, compute a range, bearing so we can correccttly map out the soundings
 				brg = (90 - (180 / math.pi) * math.atan2(datagram.ALONG_TRACK_ARRAY[i], datagram.ACROSS_TRACK_ARRAY[i]) )
 				rng = math.sqrt( (datagram.ACROSS_TRACK_ARRAY[i]**2) + (datagram.ALONG_TRACK_ARRAY[i]**2) )
