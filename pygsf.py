@@ -7,6 +7,9 @@
 
 # See readme.md for more details
 
+import sys
+from glob import glob
+import argparse
 import os.path
 import struct
 import pprint
@@ -20,7 +23,7 @@ from statistics import mean
 import mmap
 
 # for testing only...
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 
 #/* The high order 4 bits are used to define the field size for this array */
@@ -60,12 +63,30 @@ REJECT_INTENSITY= -4
 ###############################################################################
 def main():
 
+	parser = argparse.ArgumentParser(description='Read GSF file and create a reflectivity image.')
+	parser.add_argument('-i', dest='inputFile', action='store', help='Input ALL filename to image. It can also be a wildcard, e.g. *.gsf')
+
+	if len(sys.argv)==1:
+		parser.print_help()
+		sys.exit(1)
+	
+	args = parser.parse_args()
+
+	print ("processing with settings: ", args)
+	for filename in glob(args.inputFile):
+		if not filename.endswith('.gsf'):
+			print ("File %s is not a .all file, skipping..." % (filename))
+			continue
+		if not os.path.isfile(filename):
+			print ("file not found:", filename)
+			exit()
+
 	# testR2SonicAdjustment()
-	testreader()
+	testreader(filename)
 	# conditioner()
 
 ###############################################################################
-def testreader():
+def testreader(filename):
 	'''
 	sample read script so we can see how to use the code
 	'''
@@ -77,7 +98,7 @@ def testreader():
 	# filename = "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 125110 - 0001-2026_1.gsf"
 	# filename = "F:/Projects/multispectral/_Newbex/20170524-134208 - 0001-2026_1.gsf"
 	# filename = "F:/Projects/multispectral/_BedfordBasin2017/20170502 - 131750 - 0001-2026_1.gsf"
-	filename = "C:/projects/multispectral/_BedfordBasin2017/20170502 - 150058 - 0001-2026_1.gsf"
+	# filename = "C:/projects/multispectral/_BedfordBasin2017/20170502 - 150058 - 0001-2026_1.gsf"
 
 
 	print (filename)
@@ -100,8 +121,9 @@ def testreader():
 		# read a datagram.  If we support it, return the datagram type and aclass for that datagram
 		# The user then needs to call the read() method for the class to undertake a fileread and binary decode.  This keeps the read super quick.
 		numberofbytes, recordidentifier, datagram = r.readDatagram()
-		# print(recordidentifier, end='')
+		# print(datagram)
 		if recordidentifier == SWATH_BATHYMETRY:
+			print(recordidentifier, end=',')
 			datagram.read()
 			datagram.snippettype = SNIPPET_NONE
 			# print ("%s Lat:%.3f Lon:%.3f Ping:%d Freq:%d Serial %s" % (datagram.currentRecordDateTime(), datagram.latitude, datagram.longitude, datagram.pingnumber, datagram.frequency, datagram.serialnumber))
@@ -123,7 +145,7 @@ def testreader():
 			if datagram.frequency == 400000:
 				freq400 = mean(samplearray)
 				# print ("%d,%d,%.3f,%.3f,%.3f" %(pingcount, datagram.pingnumber, freq100, freq200, freq400))
-				print ("%d" %(pingcount))
+				# print ("%d" %(pingcount))
 				pingcount += 1
 				# if len(bs) > 0:
 				# 	plt.plot(datagram.BEAM_ANGLE_ARRAY, bs, linewidth=0.25, color='blue')
@@ -148,9 +170,16 @@ class UNKNOWN_RECORD:
 		self.fileptr = fileptr
 		self.fileptr.seek(numbytes, 1) # set the file ptr to the end of the record
 		self.data = ""
+		self.name = "unknown"
 
 	def read(self):
 		self.data = self.fileptr.read(self.numberofbytes)
+
+	def __str__(self):
+		'''
+		pretty print this class
+		'''
+		return pprint.pformat(vars(self))
 
 class SCALEFACTOR:
 	def __init__(self):
@@ -158,6 +187,12 @@ class SCALEFACTOR:
 		self.compressionFlag = 0	#/* Specifies bytes of storage in high order nibble and type of compression in low order nibble */
 		self.multiplier = 0.0
 		self.offset = 0
+		self.name = "scaleFactor"
+	def __str__(self):
+		'''
+		pretty print this class
+		'''
+		return pprint.pformat(vars(self))
 	
 class SWATH_BATHYMETRY_PING :
 	def __init__(self, fileptr, numbytes, recordidentifier, hdrlen):
@@ -188,6 +223,8 @@ class SWATH_BATHYMETRY_PING :
 		self.numbeams = 0
 		self.time = 0
 		self.pingnanotime = 0
+		self.name = "swath bathy ping"
+
 ###############################################################################
 	def __str__(self):
 		'''
@@ -198,6 +235,8 @@ class SWATH_BATHYMETRY_PING :
 	def clippolar(self, leftclipdegrees, rightclipdegrees):
 		'''sets the processing flags to rejected if the beam angle is beyond the clip parameters'''
 		if self.numbeams == 0:
+			return
+		if len(self.QUALITY_FACTOR_ARRAY) != len(self.TRAVEL_TIME_ARRAY):
 			return
 		for i, s in enumerate(self.BEAM_ANGLE_ARRAY):
 			if (s <= leftclipdegrees) or (s >= rightclipdegrees):
@@ -210,6 +249,8 @@ class SWATH_BATHYMETRY_PING :
 		'''sets the processing flags to rejected if the two way travel time is less than the clip parameters'''
 		if self.numbeams == 0:
 			return
+		if len(self.QUALITY_FACTOR_ARRAY) != len(self.TRAVEL_TIME_ARRAY):
+			return
 		for i, s in enumerate(self.TRAVEL_TIME_ARRAY):
 			if (s <= minimumtraveltime):
 				self.QUALITY_FACTOR_ARRAY[i] += REJECT_RANGE
@@ -219,6 +260,8 @@ class SWATH_BATHYMETRY_PING :
 	def clipintensity(self, minimumintenisty=0.0):
 		'''sets the processing flags to rejected if the two way travel time is less than the clip parameters'''
 		if self.numbeams == 0:
+			return
+		if len(self.QUALITY_FACTOR_ARRAY) != len(self.TRAVEL_TIME_ARRAY):
 			return
 		for i, s in enumerate(self.MEAN_REL_AMPLITUDE_ARRAY):
 			if (s <= minimumintenisty):
@@ -365,7 +408,7 @@ class SWATH_BATHYMETRY_PING :
 			sf.multiplier = s[1]
 			sf.offset = s[2]
 			self.scalefactors.append(sf)
-		print (self.scalefactors)
+		# print (self.scalefactors)
 		return
 
 	def readintensityarray(self, snippets, scale, offset, datatype, snippettype):
@@ -446,9 +489,10 @@ class SWATH_BATHYMETRY_PING :
 		'''entry point for r2sonic backscatter TVG, Gain and footprint correction algorithm'''
 		if self.perbeam:
 			samplearray = self.MEAN_REL_AMPLITUDE_ARRAY
+			return samplearray
 		else:
 			samplearray = self.SNIPPET_SERIES_ARRAY
-
+			return samplearray
 		# an implementation of the backscatter correction algorithm from Norm Campbell at CSIRO
 		H0_TxPower = self.transmitsourcelevel
 		H0_SoundSpeed = self.soundspeed
@@ -614,7 +658,7 @@ class SWATH_BATHYMETRY_PING :
 		self.absorptioncoefficient = raw[21]/ 1.0e3 #dB/kilometre
 		mounttiltangle = raw[22] / 1.0e6
 
-		print ("ping %d Date %s freq %d absorption %.3f" % (self.pingnumber, self.currentRecordDateTime(), self.frequency, self.absorptioncoefficient))
+		# print ("ping %d Date %s freq %d absorption %.3f" % (self.pingnumber, self.currentRecordDateTime(), self.frequency, self.absorptioncoefficient))
 
 		receiverinfo = raw[23]
 		reserved = raw[24]
@@ -662,6 +706,13 @@ class GSFHEADER:
 		self.numbytes = numbytes					# remember how many bytes this packet contains
 		self.fileptr = fileptr						# remember the file pointer so we do not need to pass from the host process
 		self.fileptr.seek(numbytes, 1)				# move the file pointer to the end of the record so we can skip as the default actions
+		self.name = "GSFHeader"
+
+	def __str__(self):
+		'''
+		pretty print this class
+		'''
+		return pprint.pformat(vars(self))
 
 	def read(self):
 		rec_fmt = '=12s'
@@ -675,6 +726,7 @@ class GSFHEADER:
 		
 		self.version   = s[0].decode('utf-8').rstrip('\x00')
 		return
+
 
 ###############################################################################
 class GSFREADER:
@@ -878,6 +930,13 @@ class cBeam:
 		self.sampleMin			  = 999		 
 		self.sampleMax			  = -999		 
 		self.samples				= []
+		self.name = "beam"
+		
+	def __str__(self):
+		'''
+		pretty print this class
+		'''
+		return pprint.pformat(vars(self))
 
 ###############################################################################
 if __name__ == "__main__":

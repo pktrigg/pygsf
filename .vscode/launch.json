@@ -16,11 +16,12 @@
 				"WaitOnAbnormalExit",
 				"WaitOnNormalExit",
 				"RedirectOutput"
-			],
-					"args": ["-i", "C:/development/python/sample_subset.gsf"]\
+            ],
 		},
-}
-
+    }
+    
+	"args": ["-arc", "C:/projects/Alec Hansen lll/condition/angularResponseCurve_.csv", "-i", "C:/projects/Alec Hansen lll/condition/0001 - LKP_EPIRB_NS_CL - 0001-R2 Sonic 2024 Bathy_subset.gsf"]
+                    "args": ["-i", "C:/development/python/sample_subset.gsf"]\
 					"args": ["-i", "F:/Projects/multispectral/_BedfordBasin2016/20160331 - 123110 - 0002-2026_1.gsf"\
 					"args": ["-i", "F:/Projects/multispectral/Newbex/20170524-182547 - 0001-2026_1.gsf"\
 					"args": ["-i", "F:/Projects/multispectral/Bedford Basin-2 Data Sets/20160331 - Bedford Basin/GSF/20160331 - 125110 - 0001-2026_1.gsf", "-extractbs", "-frequency", "100000"\

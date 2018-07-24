@@ -23,17 +23,18 @@ warnings.filterwarnings('ignore')
 
 def main():
 	parser = argparse.ArgumentParser(description='Read GSF file and create a reflectivity image.')
-	parser.add_argument('-a', action='store_true', default=False, dest='annotate', help='-a : Annotate the image with timestamps.  [Default: True]')
-	parser.add_argument('-clip', dest='clip', default = 0.15, action='store', help='-clip <value> : Clip the minimum and maximum edges of the data by this percentage so the color stretch better represents the data.  [Default - 5.  A good value is -clip 1.]')
-	parser.add_argument('-minz', dest='minz', default = 0.0, action='store', help='-minz <value> : use this minimum sample value in the gray scale transform. [Default - 0]')
-	parser.add_argument('-maxz', dest='maxz', default = 0.0, action='store', help='-maxz <value> : use this maximum sample value in the gray scale transform. [Default - 0]')
-	parser.add_argument('-color', dest='color', default = 'gray', action='store', help='-color <paletteName> : Specify the color palette.  Options are : -color yellow_brown_log, -color gray, -color yellow_brown or any of the palette filenames in the script folder. [Default = gray.]' )
-	parser.add_argument('-i', dest='inputFile', action='store', help='-i <ALLfilename> : input ALL filename to image. It can also be a wildcard, e.g. *.gsf')
-	parser.add_argument('-invert', dest='invert', default = False, action='store_true', help='-invert : Inverts the color palette')
+	parser.add_argument('-a', action='store_true', default=False, dest='annotate', help='Annotate the image with timestamps.  [Default: True]')
+	parser.add_argument('-clip', dest='clip', default = 0.5, action='store', help='Clip the minimum and maximum edges of the data by this percentage so the color stretch better represents the data.  [Default: 0.5]')
+	parser.add_argument('-minz', dest='minz', default = 0.0, action='store', help='Use this minimum sample value in the gray scale transform. [Default: 0]')
+	parser.add_argument('-maxz', dest='maxz', default = 0.0, action='store', help='Use this maximum sample value in the gray scale transform. [Default: 0]')
+	parser.add_argument('-color', dest='color', default = 'gray', action='store', help='Specify the color palette.  Options are : -color yellow_brown_log, -color graylog, -color yellow_brown or any of the palette filenames in the script folder. [Default: gray.]' )
+	parser.add_argument('-i', dest='inputFile', action='store', help='Input ALL filename to image. It can also be a wildcard, e.g. *.gsf')
+	parser.add_argument('-invert', dest='invert', default = False, action='store_true', help='Inverts the color palette')
 	parser.add_argument('-odir', dest='odir', action='store', default="", help='Specify a relative output folder e.g. -odir conditioned')
-	parser.add_argument('-r', action='store_true', default=False, dest='rotate', help='-r : Rotate the resulting waterfall so the image reads from left to right instead of bottom to top.  [Default is bottom to top]')
-	parser.add_argument('-z', dest='zoom', default = 0, action='store', help='-z <value> : Zoom scale factor. A larger number makes a larger image, and a smaller number (0.5) provides a smaller image, e.g -z 2 makes an image twice the native resolution. [Default: 0]')
-	parser.add_argument('-arc', dest='arc', action='store', default="", help='apply an angular response curve to the data e.g. -arc c:\\arc.csv')
+	parser.add_argument('-r', action='store_true', default=False, dest='rotate', help='Rotate the resulting waterfall so the image reads from left to right instead of bottom to top.  [Default is bottom to top]')
+	parser.add_argument('-z', dest='zoom', default = 0, action='store', help='Zoom scale factor. A larger number makes a larger image, and a smaller number (0.5) provides a smaller image, e.g -z 2 makes an image twice the native resolution. [Default: 0]')
+	parser.add_argument('-arc', dest='arc', action='store', default="", help='Apply an angular response curve to the data e.g. -arc c:\\arc.csv')
+	parser.add_argument('-autoarc', dest='autoarc', action='store_true', default=False, help='Compute then apply an angular response curve to the data. [Defaul: False]')
 
 	if len(sys.argv)==1:
 		parser.print_help()
@@ -42,8 +43,8 @@ def main():
 	args = parser.parse_args()
 
 	applyarc=False
-
 	arc=[]
+	
 	# load the angular response curve we wish to apply
 	if args.arc:
 		applyarc=True
@@ -52,6 +53,18 @@ def main():
 			reader = csv.DictReader(csvFile)
 			for row in reader:
 				arc.append([float(row["100kHz_ARC(dB)"]), float(row["200kHz_ARC(dB)"]), float(row["400kHz_ARC(dB)"]), float(row["TakeOffAngle(Deg)"])])
+
+	if args.autoarc:
+		applyarc=True
+		print ("Loading angular response curve:", args.arc)
+		# make an arc which supports triple frequency.  we can then analyse all frequencies at the same time
+		beamdetail = [0,0,0,0]
+		startAngle = -90
+		ARC = [[pygsf.cBeam(beamdetail, i), pygsf.cBeam(beamdetail, i), pygsf.cBeam(beamdetail, i)] for i in range(startAngle, -startAngle)]
+		# ARC = extractARC(filename, ARC, pygsf.ARCIdx, beamPointingAngles, transmitSector)
+# !!!		outFileName = os.path.join(os.path.dirname(os.path.abspath(matches[0])), args.odir, "AngularResponseCurve_.csv")
+		# outFileName = createOutputFileName(outFileName)
+		# saveARC(outFileName, ARC)
 
 	print ("processing with settings: ", args)
 	for filename in glob(args.inputFile):
@@ -65,13 +78,13 @@ def main():
 		xResolution, yResolution, beamCount, leftExtent, rightExtent, distanceTravelled, navigation = computeXYResolution(filename)
 		print("xRes %.2f yRes %.2f  leftExtent %.2f, rightExtent %.2f, distanceTravelled %.2f" % (xResolution, yResolution, leftExtent, rightExtent, distanceTravelled)) 
 		# pkpk tmp
-		# beamCount = 512
-		# xResolution = 0.4
-		# yResolution = 0.27
-		# leftExtent = -162.22
-		# rightExtent = 159.23
-		# distanceTravelled = 488.05
-		# navigation = []
+		# beamCount = 256
+		# xResolution = 1.77
+		# yResolution = 0.258
+		# leftExtent = -98.68
+		# rightExtent = 97.6
+		# distanceTravelled = 2243
+		navigation = []
 		# pkpk tmp
 		if beamCount == 0:
 			print ("No data to process, skipping empty file")
@@ -129,7 +142,8 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, min
 					xt.append(x)
 					if applyarc:
 						# angle = datagram.BEAM_ANGLE_ARRAY[i]
-						arcIndex = round(datagram.BEAM_ANGLE_ARRAY[i]) - int(arc[0][3]) # efficiently find the correct slot for the data
+						arcIndex = round(datagram.BEAM_ANGLE_ARRAY[i] + datagram.roll) + 90 + 1  # efficiently find the correct slot for the data.  we have a CSV from -90 to +90 and a header line
+						# arcIndex = round(datagram.BEAM_ANGLE_ARRAY[i]) - int(arc[0][3]) # efficiently find the correct slot for the data
 						s2.append(samplearray[i] - arc[arcIndex][idx])
 					else:
 						s2.append(samplearray[i])
@@ -161,9 +175,12 @@ def createWaterfall(filename, odir, colorScale, beamCount, zoom=1.0, clip=1, min
 	update_progress("Decoding .gsf file", 1)
 	r.close()	
 
-	createImage(filename, odir, "100kHz", colorScale, beamCount, waterfall100, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
-	createImage(filename, odir, "200kHz", colorScale, beamCount, waterfall200, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
-	createImage(filename, odir, "400kHz", colorScale, beamCount, waterfall400, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	if len(waterfall100) > 0:
+		createImage(filename, odir, "100kHz", colorScale, beamCount, waterfall100, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	if len(waterfall200) > 0:
+		createImage(filename, odir, "200kHz", colorScale, beamCount, waterfall200, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
+	if len(waterfall400) > 0:
+		createImage(filename, odir, "400kHz", colorScale, beamCount, waterfall400, zoom, clip, minz, maxz, invert, annotate, xResolution, yResolution, rotate, leftExtent, rightExtent, distanceTravelled, navigation)
 
 def createImage(filename, odir, suffix, colorScale, beamCount, waterfall, zoom=1.0, clip=1, minz=0, maxz=100, invert=True, annotate=True, xResolution=1, yResolution=1, rotate=False, leftExtent=-100, rightExtent=100, distanceTravelled=0, navigation=[]):
 

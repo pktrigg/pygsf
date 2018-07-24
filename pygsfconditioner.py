@@ -23,7 +23,8 @@ def main():
 	parser = ArgumentParser(description='Read gsf file and condition the file by removing redundant records and injecting updated information to make the file self-contained.',
 			epilog='Example: \n To condition a single file use -i c:/temp/myfile.gsf -exclude 12 \n to condition gsf files in a folder use -i c:/temp/*.gsf\n To condition gsf .gsf files recursively in a folder, use -r -i c:/temp \n To condition all .gsf files recursively from the current folder, use -r -i ./ \n', formatter_class=RawTextHelpFormatter)
 	parser.add_argument('-exclude', dest='exclude', action='store', default="", help='Exclude these records.  Note: this needs to be case sensitive e.g. -exclude 12,22')
-	parser.add_argument('-dump', action='store_true', default=False, dest='dump', help='Ascii Dump of the GSF file. [Default: False]')
+	parser.add_argument('-dump', action='store_true', default=False, dest='dump', help='Ascii Dump of GSF file ping headers. [Default: False]')
+	parser.add_argument('-dp', action='store_true', default=False, dest='dp', help='Ascii Dump of GSF file record types. [Default: False]')
 	parser.add_argument('-extractbs', action='store_true', default=False, dest='extractbs', help='Extract backscatter from snippet so we can analyse. [Default: False]')
 	parser.add_argument('-i', dest='inputFile', action='store', help='Input gsf filename. It can also be a wildcard, e.g. *.gsf')
 	parser.add_argument('-o', dest='outputFile', action='store', help='Output gsf filename. If not supplied, a filename is auto generated. [Default = ""')
@@ -41,12 +42,15 @@ def main():
 	extractBackscatter = False
 	writeConditionedFile = False
 	dump = False
+	dp = False
 	latitude = 0
 	longitude = 0
 	exclude = []
 
 	if args.dump:
 		dump = args.dump
+	if args.dp:
+		dp = args.dp
 
 	if args.recursive:
 		for root, dirnames, filenames in os.walk(os.path.dirname(args.inputFile)):
@@ -68,14 +72,16 @@ def main():
 	if len(args.exclude) > 0:
 		exclude = list(map(int, args.exclude.split(",")))
 		print ("Excluding datagrams: %s :" % exclude)
+		extractBackscatter = False
+		writeConditionedFile= True
 
 	if args.extractbs:
 		extractBackscatter = True
 		writeConditionedFile= False #we do not need to write out a .gsf file
 		# we need a generic set of beams into which we can insert individual ping data.  Thhis will be the angular respnse curve
+		# make an arc which supports triple frequency.  we can then analyse all frequencies at the same time
 		beamdetail = [0,0,0,0]
 		startAngle = -90
-		# make an arc which supports triple frequency.  we can then analyse all frequencies at the same time
 		ARC = [[pygsf.cBeam(beamdetail, i), pygsf.cBeam(beamdetail, i), pygsf.cBeam(beamdetail, i)] for i in range(startAngle, -startAngle)]
 		# use a dictionary so we can easily find the correct array by frequency
 		beamPointingAngles = []
@@ -84,6 +90,8 @@ def main():
 	for filename in matches:
 		if dump:
 			dumpfile(filename, str(args.odir))
+		if dp:
+			dumppacket(filename, str(args.odir))
 
 		if writeConditionedFile:
 			createsubsetfile(filename, str(args.odir), exclude)
@@ -157,6 +165,31 @@ def	dumpfile(filename, odir):
 	return
 
 ###############################################################################
+def	dumppacket(filename, odir):
+	# create an output file based on the input
+	outFileName = os.path.splitext(filename)[0]+'_DumpPacket.txt'
+	outFileName  = createOutputFileName(outFileName)
+	outFilePtr = open(outFileName, 'w')
+	print ("writing dumpof packets to file: %s" % outFileName)
+
+	r = pygsf.GSFREADER(filename)
+	counter = 0
+
+	while r.moreData():
+		# read a datagram.  If we support it, return the datagram type and a class for that datagram
+		numberofbytes, recordidentifier, datagram = r.readDatagram()
+		# read the bytes into a buffer 
+		# rawBytes = r.readDatagramBytes(datagram.offset, numberofbytes)
+		# datagram.read()
+		outFilePtr.write ("%d, %s\n" % (datagram.recordidentifier, str(datagram)))
+
+	outFilePtr.close()
+	r.close()
+	print ("Saving dumpPackets to: %s" % outFileName)		
+	outFilePtr.close()
+	return
+
+###############################################################################
 def	createsubsetfile(filename, odir, exclude):
 	# create an output file based on the input
 	outFileName = os.path.join(os.path.dirname(os.path.abspath(filename)), odir, os.path.splitext(os.path.basename(filename))[0] + "_subset" + os.path.splitext(os.path.basename(filename))[1])
@@ -203,8 +236,8 @@ def extractARC(filename, ARC, ARCIdx, beamPointingAngles, transmitSector):
 			for i in range(datagram.numbeams):
 				# now place the results into the correct bucket based on frequency
 				arcIndex = round(datagram.BEAM_ANGLE_ARRAY[i]- ARC[0][idx].takeOffAngle) # efficiently find the correct slot for the data
-				ARC[arcIndex][idx].sampleMin = min(samplearray[i])
-				ARC[arcIndex][idx].sampleMax = max(samplearray[i])
+				# ARC[arcIndex][idx].sampleMin = min(samplearray[i])
+				# ARC[arcIndex][idx].sampleMax = max(samplearray[i])
 				ARC[arcIndex][idx].sampleSum += samplearray[i]
 				ARC[arcIndex][idx].numberOfSamplesPerBeam += 1
 				ARC[arcIndex][idx].sector = datagram.SECTOR_NUMBER_ARRAY[i]
